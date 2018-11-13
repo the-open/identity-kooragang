@@ -39,5 +39,5 @@ These commands assume you're in the project directory, and have the right versio
 
 ## Running the test suite
 - Copy [`.env.test.sample`](./.env.test.sample) to `.env.test`, and update the `DATABASE_URL`
-- Create a test database: `createdb identity_kooragang_test_host; rake db:migrate`
+- Create a test database: `createdb identity_kooragang_test_host; RAILS_ENV=test bundle exec rake db:migrate`
 - `bundle exec rspec` runs all the tests

@@ -13,6 +13,21 @@ class Member < ApplicationRecord
     joins(:phone_numbers)
   }
 
+  scope :with_phone_type, -> (phone_type) {
+    with_phone_numbers
+    .merge(PhoneNumber.send("#{phone_type}s"))
+  }
+
+  scope :with_mobile, -> {
+    with_phone_numbers
+    .merge(PhoneNumber.mobiles)
+  }
+
+  scope :with_landline, -> {
+    with_phone_numbers
+    .merge(PhoneNumber.landlines)
+  }
+
   def name
     [first_name, middle_names, last_name].select(&:present?).join(' ')
   end
@@ -31,6 +46,20 @@ class Member < ApplicationRecord
     phone_numbers.sort_by(&:updated_at).last.phone unless phone_numbers.empty?
   end
 
+  def landline
+    phone_numbers
+      .landlines
+      .sort_by(&:updated_at)
+      .last.try(:phone)
+  end
+
+  def mobile
+    phone_numbers
+      .mobiles
+      .sort_by(&:updated_at)
+      .last.try(:phone)
+  end
+
   def flattened_custom_fields
     custom_fields.inject({}) do |memo, custom_field|
       memo.merge({ :"#{custom_field.custom_field_key.name}" => custom_field.data })
@@ -47,7 +76,9 @@ class Member < ApplicationRecord
       if phone_record = phone_numbers.where('phone = ?', new_phone_number).first
         phone_record.touch
       else
-        phone_number = PhoneNumber.new(member_id: id, phone: new_phone_number, phone_type: new_phone_type)
+        phone_number_attributes = {member_id: id, phone: new_phone_number}
+        phone_number_attributes[:phone_type] = new_phone_type if !new_phone_type.nil?
+        phone_number = PhoneNumber.new(phone_number_attributes)
         if phone_number.valid?
           phone_number.save
         else

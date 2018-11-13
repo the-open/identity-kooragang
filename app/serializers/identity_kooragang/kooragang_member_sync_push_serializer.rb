@@ -7,7 +7,7 @@ module IdentityKooragang
     end
 
     def phone_number
-      @object.phone
+      @object.send(instance_options[:phone_type])
     end
 
     def campaign_id

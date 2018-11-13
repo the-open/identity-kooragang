@@ -1,7 +1,6 @@
 require 'active_record'
 require_relative 'kooragang_test_schema'
 
-## Kooragang
 module ExternalDatabaseHelpers
   class << self
     def set_external_database_urls(database_url)
@@ -16,13 +15,12 @@ module ExternalDatabaseHelpers
     end
 
     def setup
-      create_database
-      #ActiveRecord::Base.establish_connection ENV['KOORAGANG_DATABASE_URL']
-      #ActiveRecord::Base.connection
+      ActiveRecord::Base.establish_connection ENV['KOORAGANG_DATABASE_URL']
+      ActiveRecord::Base.connection
     rescue
-      #ExternalDatabaseHelpers.create_database
+      ExternalDatabaseHelpers.create_database
     ensure
-      #ActiveRecord::Base.establish_connection ENV['IDENTITY_DATABASE_URL']
+      ActiveRecord::Base.establish_connection ENV['IDENTITY_DATABASE_URL']
     end
 
     def create_database

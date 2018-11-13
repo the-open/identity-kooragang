@@ -8,14 +8,16 @@ module IdentityKooragang
   ACTIVE_STATUS='active'
   FINALISED_STATUS='finalised'
   FAILED_STATUS='failed'
+  PULL_JOBS=[:fetch_new_calls]
 
   def self.push(sync_id, members, external_system_params)
     begin
       campaign_id = JSON.parse(external_system_params)['campaign_id'].to_i
+      phone_type = JSON.parse(external_system_params)['phone_type'].to_s
+      priority = ApplicationHelper.integer_or_nil(JSON.parse(external_system_params)['priority']) || 1
       campaign_name = Campaign.find(campaign_id).name
-      audience = Audience.create!(sync_id: sync_id, campaign_id: campaign_id)
-
-      yield members.with_phone_numbers, campaign_name
+      audience = Audience.create!(sync_id: sync_id, campaign_id: campaign_id, priority: priority)
+      yield members.with_phone_type(phone_type), campaign_name
     rescue => e
       audience.update_attributes!(status: FAILED_STATUS) if audience
       raise e
@@ -27,12 +29,14 @@ module IdentityKooragang
       audience = Audience.find_by_sync_id(sync_id)
       audience.update_attributes!(status: ACTIVE_STATUS)
       campaign_id = JSON.parse(external_system_params)['campaign_id'].to_i
+      phone_type = JSON.parse(external_system_params)['phone_type'].to_s
       members.in_batches(of: BATCH_AMOUNT).each_with_index do |batch_members, batch_index|
         rows = ActiveModel::Serializer::CollectionSerializer.new(
           batch_members,
           serializer: KooragangMemberSyncPushSerializer,
           audience_id: audience.id,
-          campaign_id: campaign_id
+          campaign_id: campaign_id,
+          phone_type: phone_type
         ).as_json
         write_result_count = Callee.add_members(rows)
 
@@ -52,10 +56,11 @@ module IdentityKooragang
   def self.fetch_new_calls(force: false)
     last_updated_at = Time.parse($redis.with { |r| r.get 'kooragang:calls:last_updated_at' } || '1970-01-01 00:00:00')
     updated_calls = Call.updated_calls(force ? DateTime.new() : last_updated_at)
+
     iteration_method = force ? :find_each : :each
 
     updated_calls.send(iteration_method) do |call|
-      contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: 'kooragang')
+      contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
       contactee = Member.upsert_member(phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name)
 
       unless contactee
@@ -63,20 +68,21 @@ module IdentityKooragang
         next
       end
 
+      # Caller conditional upsert phone
       if call.caller
         contactor = Member.upsert_member(phones: [{ phone: call.caller.phone_number }])
       else
         contactor = nil
       end
 
-      contact_campaign = ContactCampaign.find_or_create_by(external_id: call.callee.campaign.id, system: 'kooragang')
-      contact_campaign.update_attributes(name: call.callee.campaign.name, contact_type: 'call')
+      contact_campaign = ContactCampaign.find_or_create_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
+      contact_campaign.update_attributes(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
 
       contact.update_attributes(contactee: contactee,
                                 contactor: contactor,
                                 contact_campaign: contact_campaign,
                                 duration: call.ended_at - call.created_at,
-                                contact_type: 'call',
+                                contact_type: CONTACT_TYPE,
                                 happened_at: call.created_at,
                                 status: call.status)
 

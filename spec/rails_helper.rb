@@ -27,37 +27,6 @@ abort("The Rails environment is running in production mode!") if Rails.env.produ
 require 'sidekiq/testing'
 Sidekiq::Testing.fake!
 
-# Capybarara setup
-require 'capybara/rspec'
-require 'capybara'
-require 'capybara/dsl'
-
-require 'webmock/rspec'
-require 'vcr'
-
-VCR.configure do |config|
-  config.cassette_library_dir = "fixtures/vcr_cassettes"
-  config.hook_into :webmock
-end
-
-Capybara.app = Rails.application
-Capybara.run_server = true
-Capybara.server_port = ENV['PORT'] || 8200
-Capybara.default_selector = :css # instead of :xpath
-Capybara.default_driver = :chrome
-Capybara.app_host = ENV['DOMAIN'].present? ? "http://#{ENV['DOMAIN']}" : 'http://localhost:8200'
-Capybara.default_max_wait_time = 10
-
-Capybara.register_driver :chrome do |app|
-  Capybara::Selenium::Driver.new(app, browser: :chrome)
-end
-
-Capybara.register_driver :selenium_firefox do |app|
-  capabilities = Selenium::WebDriver::Remote::Capabilities.firefox marionette: true
-  capabilities['firefox_binary'] = '/usr/local/bin/wires'
-  Capybara::Selenium::Driver.new(app, browser: :firefox, desired_capabilities: capabilities)
-end
-
 # Requires supporting ruby files with custom matchers and macros, etc, in
 # spec/support/ and its subdirectories. Files matching `spec/**/*_spec.rb` are
 # run as spec files by default. This means that files in spec/support that end
@@ -85,12 +54,6 @@ RedshiftDB = ActiveRecord::Base
 
 RSpec.configure do |config|
   config.fixture_path = "#{Rails.root}/spec/fixtures"
-
-  # Make have_* matchers available to request specs e.g.:
-  # expect(response.body).to have_title 'My Page Title'
-  # and model specs (sometimes rely on mail matchers that use
-  # have_css etc. in model specs).
-  config.include Capybara::RSpecMatchers, type: /request|model/
 
   config.before(:suite) do
     # Speed up tests by using :transaction
@@ -147,18 +110,3 @@ end
 def clean_external_database
   ExternalDatabaseHelpers.clean
 end
-
-# Since schema.rb doesn't support functions, run this migration manually to
-# create one. (This is done via seeds.rb in dev/prod)
-# TODO: Switch to SQL format schema dump or find another way around this
-require Rails.root.join('db', 'migrate', '002_add_table_deleting_function.rb').to_s
-AddTableDeletingFunction.new.change
-require Rails.root.join('db', 'migrate', '001_add_getdate_function.rb').to_s
-AddGetdateFunction.new.up
-
-def clean_list_tables
-  ActiveRecord::Base.connection.execute("SELECT wildcard_drop_tables('public','list_members_part_list_ids_');")
-end
-
-FactoryBot.definition_file_paths << File.expand_path('../factories', __FILE__)  
-

@@ -2,6 +2,12 @@ class PhoneNumber < ApplicationRecord
   include ReadWriteIdentity
   belongs_to :member
 
+  MOBILE_TYPE = 'mobile'
+  LANDLINE_TYPE = 'landline'
+
+  scope :mobiles, -> { where(phone_type: MOBILE_TYPE) }
+  scope :landlines, -> { where(phone_type: LANDLINE_TYPE) }
+
   def self.standardise_phone_number(phone)
     phone = phone.to_s
     phone = phone.delete(' ').delete(')').delete('(').tr('-', ' ')

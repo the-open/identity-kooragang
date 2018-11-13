@@ -1,0 +1,18 @@
+<div class="form-group">
+  <%= label_tag "services[kooragang]" do %>
+    <p>Push this list to Kooragang Campaign</p>
+    <%= check_box_tag "services[kooragang]", "on", false, {:id => "services_kooragang", :class => "js-toggle-select"} %>
+    Yes
+  <% end %>
+  <div class="js-toggle-input" style="display: none;">
+    <%= label_tag "kooragang[campaign_id]", 'Campaign: ' %>
+    <%= select_tag "kooragang[campaign_id]", options_for_select(IdentityKooragang::ApplicationHelper.campaigns_for_select) %>
+    <br/>
+    <%= label_tag "kooragang[phone_type]", 'Phone Type: ' %>
+    <%= select_tag "kooragang[phone_type]", options_for_select([['Mobile', 'mobile'], ['Landline', 'landline']]) %>
+    <br/>
+    <%= label_tag "kooragang[priority]", 'Priority: ' %>
+    <%= number_field_tag "kooragang[priority]", 1, min: 1, max: 10 %>
+  </div>
+  <hr />
+</div>

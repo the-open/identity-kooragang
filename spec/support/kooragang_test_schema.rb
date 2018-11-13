@@ -187,10 +187,11 @@ class CreateKooragangTestDb < ActiveRecord::Migration[5.0]
     create_table 'audiences', force: true do |t|
       t.integer  'sync_id', limit: 8
       t.integer  'campaign_id', limit: 8
+      t.integer  "priority",    limit: 8, default: 1
       t.string   'status', default: "initialising"
       t.datetime 'updated_at', default: 'now()'
     end
-    execute "ALTER TABLE audiences ADD CONSTRAINT audiences_list_id_campaign_id_unique UNIQUE (list_id, campaign_id)"
+    execute "ALTER TABLE audiences ADD CONSTRAINT audiences_sync_id_campaign_id_unique UNIQUE (sync_id, campaign_id)"
 
     add_index "users", ["phone_number"], name: "users_phone_number_unique", unique: true, using: :btree
 
