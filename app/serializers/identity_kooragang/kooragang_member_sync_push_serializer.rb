@@ -6,6 +6,10 @@ module IdentityKooragang
       @object.id
     end
 
+    def first_name
+      @object.first_name ? @object.first_name : ''
+    end
+
     def phone_number
       @object.send(instance_options[:phone_type])
     end
