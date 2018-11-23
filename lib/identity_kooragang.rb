@@ -96,6 +96,9 @@ module IdentityKooragang
           subscription = Subscription.find(Settings.kooragang.opt_out_subscription_id)
           contactee.unsubscribe_from(subscription, 'kooragang:disposition')
         end
+
+        rsvp_to_nation_builder(call, contactee, sr)
+
       end
     end
 
@@ -104,6 +107,22 @@ module IdentityKooragang
     end
 
     updated_calls.size
+  end
+
+  def self.rsvp_to_nation_builder(call, contactee, sr)
+    if is_external_services_activated?('IdentityNationBuilder')
+      question = (call.campaign.questions || {})[sr.question]
+      if question && (answers = question['answers'])
+        answer = answers.values.detect { |answer| answer['value'] == sr.answer }
+        if answer && answer['rsvp_event_id']
+          IdentityNationBuilder::API.rsvp(contactee, answer['rsvp_event_id'])
+        end
+      end
+    end
+  end
+
+  def self.is_external_services_activated?(external_service)
+    Settings.external_services.to_h.key?(external_service)
   end
 
 end

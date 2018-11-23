@@ -145,6 +145,28 @@ describe IdentityKooragang do
       expect(Contact.last.contactor).to be_nil
     end
 
+    context('with a campaign with an survey answer that is associated with an event id') do
+      let!(:event_id) { 88 }
+      let!(:questions) {
+        {
+          disposition: { answers: { "2" => { value: 'meaningful', next: 'rsvp' } } },
+          rsvp: { answers: { "2" => { value: 'going', rsvp_event_id: event_id } } }
+        }
+      }
+      let!(:member) { FactoryBot.create(:member_with_mobile) }
+      let!(:campaign) { FactoryBot.create(:kooragang_campaign, questions: questions) }
+      let!(:callee) { FactoryBot.create(:kooragang_callee, phone_number: member.phone, campaign: campaign) }
+      let!(:caller) { FactoryBot.create(:kooragang_caller, phone_number: '61427700429') }
+      let!(:call) { FactoryBot.create(:kooragang_call, created_at: 2.minutes.ago, callee: callee, caller: caller, ended_at: Time.now, status: 'test') }
+      before do
+        call.survey_results << IdentityKooragang::SurveyResult.new(question: 'rsvp', answer: 'going')
+      end
+      it 'should rsvp the member to the Nation Builder event when Nation Builder external service is active'  do
+        expect(IdentityNationBuilder::API).to receive(:rsvp).with(member, event_id)
+        IdentityKooragang.fetch_new_calls
+      end
+    end
+
     context('with force=true passed as parameter') do
       before { IdentityKooragang::Call.update_all(updated_at: '1960-01-01 00:00:00') }
 
@@ -171,6 +193,14 @@ describe IdentityKooragang do
         IdentityKooragang.fetch_new_calls
         expect(Contact.count).to eq(1)
       end
+    end
+  end
+end
+
+# Dummy engine module
+module IdentityNationBuilder
+  class API
+    def self.rsvp(member, event_id)
     end
   end
 end
