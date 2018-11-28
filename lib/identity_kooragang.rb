@@ -91,8 +91,7 @@ module IdentityKooragang
         contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
 
         # Process optouts
-        next unless Settings.kooragang.opt_out_subscription_id
-        if sr.question == 'disposition' && sr.answer == 'do not call'
+        if Settings.kooragang.opt_out_subscription_id && sr.opt_out?
           subscription = Subscription.find(Settings.kooragang.opt_out_subscription_id)
           contactee.unsubscribe_from(subscription, 'kooragang:disposition')
         end
@@ -104,6 +103,10 @@ module IdentityKooragang
     end
 
     updated_calls.size
+  end
+
+  def opt_out?
+    question == 'disposition' && answer == 'do not call'
   end
 
 end
