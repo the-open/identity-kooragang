@@ -145,6 +145,24 @@ describe IdentityKooragang do
       expect(Contact.last.contactor).to be_nil
     end
 
+    context('with a campaign with an survey answer that is associated with an event id') do
+      before do
+        IdentityKooragang::Call.all.destroy_all
+        member = FactoryBot.create(:member_with_mobile)
+        campaign = FactoryBot.create(:kooragang_campaign_with_rsvp_questions)
+        callee = FactoryBot.create(:kooragang_callee, phone_number: member.phone, campaign: campaign)
+        caller = FactoryBot.create(:kooragang_caller, phone_number: '61427700429')
+        call = FactoryBot.create(:kooragang_call, created_at: 2.minutes.ago, callee: callee, caller: caller, ended_at: Time.now, status: 'test')
+        call.survey_results << IdentityKooragang::SurveyResult.new(question: 'rsvp', answer: 'going')
+        @external_system_params = JSON.generate({'event_id' => 1})
+      end
+
+      it 'should rsvp the member to the Nation Builder event when Nation Builder external service is active'  do
+        expect(IdentityNationBuilder::API).to receive(:rsvp).exactly(1).times.with(anything, @external_system_params)
+        IdentityKooragang.fetch_new_calls
+      end
+    end
+
     context('with force=true passed as parameter') do
       before { IdentityKooragang::Call.update_all(updated_at: '1960-01-01 00:00:00') }
 
@@ -172,5 +190,15 @@ describe IdentityKooragang do
         expect(Contact.count).to eq(1)
       end
     end
+  end
+end
+
+# Dummy engine module
+module IdentityNationBuilder
+  class API
+    def self.rsvp(member, event_id)
+    end
+  end
+  class NationBuilderMemberSyncPushSerializer < ActiveModel::Serializer
   end
 end
