@@ -91,14 +91,20 @@ module IdentityKooragang
         contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
 
         # Process optouts
-        next unless Settings.kooragang.opt_out_subscription_id
-        if sr.question == 'disposition' && sr.answer == 'do not call'
+        if Settings.kooragang.opt_out_subscription_id && sr.is_opt_out?
           subscription = Subscription.find(Settings.kooragang.opt_out_subscription_id)
           contactee.unsubscribe_from(subscription, 'kooragang:disposition')
         end
 
-        rsvp_to_nation_builder(call, contactee, sr)
-
+        ## RSVP contactee to nation builder
+        if not defined?(IdentityNationBuilder).nil? && sr.is_rsvp?
+          external_system_params = JSON.generate({ event_id: sr.rsvp_event_id })
+          rows = ActiveModel::Serializer::CollectionSerializer.new(
+            [contactee],
+            serializer: IdentityNationBuilder::NationBuilderMemberSyncPushSerializer
+          ).as_json
+          IdentityNationBuilder::API.rsvp(rows, external_system_params) 
+        end
       end
     end
 
@@ -108,21 +114,4 @@ module IdentityKooragang
 
     updated_calls.size
   end
-
-  def self.rsvp_to_nation_builder(call, contactee, sr)
-    if is_external_services_activated?('IdentityNationBuilder')
-      question = (call.campaign.questions || {})[sr.question]
-      if question && (answers = question['answers'])
-        answer = answers.values.detect { |answer| answer['value'] == sr.answer }
-        if answer && answer['rsvp_event_id']
-          IdentityNationBuilder::API.rsvp(contactee, answer['rsvp_event_id'])
-        end
-      end
-    end
-  end
-
-  def self.is_external_services_activated?(external_service)
-    Settings.external_services.to_h.key?(external_service)
-  end
-
 end

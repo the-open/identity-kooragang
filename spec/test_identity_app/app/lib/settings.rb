@@ -20,10 +20,4 @@ class Settings
       "default_phone_country_code" => '61'
     }
   end
-
-  def self.external_services
-    return {
-      "IdentityNationBuilder" => true
-    }
-  end
 end
