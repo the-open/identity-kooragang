@@ -4,7 +4,7 @@ PATH
     identity_kooragang (0.1.0)
       active_model_serializers (~> 0.10.7)
       pg (~> 0.18)
-      rails (~> 5.1.6)
+      rails
 
 GEM
   remote: https://rubygems.org/
@@ -213,7 +213,7 @@ DEPENDENCIES
   pry
   pry-byebug
   pry-rails
-  rails (~> 5.1.6)
+  rails
   rspec-mocks
   rspec-rails
   rubocop
