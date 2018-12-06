@@ -154,11 +154,10 @@ describe IdentityKooragang do
         caller = FactoryBot.create(:kooragang_caller, phone_number: '61427700429')
         call = FactoryBot.create(:kooragang_call, created_at: 2.minutes.ago, callee: callee, caller: caller, ended_at: Time.now, status: 'test')
         call.survey_results << IdentityKooragang::SurveyResult.new(question: 'rsvp', answer: 'going')
-        @external_system_params = JSON.generate({'event_id' => 1})
       end
 
       it 'should rsvp the member to the Nation Builder event when Nation Builder external service is active'  do
-        expect(IdentityNationBuilder::API).to receive(:rsvp).exactly(1).times.with(anything, @external_system_params)
+        expect(IdentityNationBuilder::API).to receive(:rsvp).exactly(1).times.with('stagingsite', anything, 1)
         IdentityKooragang.fetch_new_calls
       end
     end
@@ -196,7 +195,7 @@ end
 # Dummy engine module
 module IdentityNationBuilder
   class API
-    def self.rsvp(member, event_id)
+    def self.rsvp(site_slug, member, event_id)
     end
   end
   class NationBuilderMemberSyncPushSerializer < ActiveModel::Serializer

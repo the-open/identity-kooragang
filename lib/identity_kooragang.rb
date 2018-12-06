@@ -98,12 +98,11 @@ module IdentityKooragang
 
         ## RSVP contactee to nation builder
         if not defined?(IdentityNationBuilder).nil? && sr.is_rsvp?
-          external_system_params = JSON.generate({ event_id: sr.rsvp_event_id })
           rows = ActiveModel::Serializer::CollectionSerializer.new(
             [contactee],
             serializer: IdentityNationBuilder::NationBuilderMemberSyncPushSerializer
           ).as_json
-          IdentityNationBuilder::API.rsvp(rows, external_system_params)
+          IdentityNationBuilder::API.rsvp(sr.rsvp_site_slug, rows, sr.rsvp_event_id.to_i)
         end
       end
     end

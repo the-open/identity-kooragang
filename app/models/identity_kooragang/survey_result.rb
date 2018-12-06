@@ -16,12 +16,24 @@ module IdentityKooragang
       call_question_answers.values.detect { |answer| answer['value'] == self.answer }
     end
 
+    def call_question_answer_present
+      call_question && call_question_answers && call_question_answer
+    end
+
+    def call_question_answer_populated_rsvp
+      call_question_answer['rsvp_event_id'] && call_question_answer['rsvp_site_slug']
+    end
+
     def is_rsvp?
-      call_question && call_question_answers && call_question_answer && call_question_answer['rsvp_event_id']
+      call_question_answer_present && call_question_answer_populated_rsvp
     end
 
     def rsvp_event_id
       is_rsvp? ? call_question_answer['rsvp_event_id'] : nil
+    end
+
+    def rsvp_site_slug
+      is_rsvp? ? call_question_answer['rsvp_site_slug'] : nil
     end
 
     def is_opt_out?

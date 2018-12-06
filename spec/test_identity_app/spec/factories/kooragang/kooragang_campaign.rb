@@ -6,8 +6,8 @@ module IdentityKooragang
       factory :kooragang_campaign_with_rsvp_questions do
         questions {
           {
-            disposition: { answers: { "2" => { value: 'meaningful', next: 'rsvp' } } },
-            rsvp: { answers: { "2" => { value: 'going', rsvp_event_id: 1 } } }
+            disposition: { answers: { "2" => { value: "meaningful", next: "rsvp" } } },
+            rsvp: { answers: { "2" => { value: "going", rsvp_event_id: 1, rsvp_site_slug: "stagingsite" } } }
           }
         }
       end
