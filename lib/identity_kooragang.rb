@@ -54,6 +54,8 @@ module IdentityKooragang
   end
 
   def self.fetch_new_calls(force: false)
+    puts ">>> Kooragang fetch_new_calls running ..."
+
     last_updated_at = Time.parse($redis.with { |r| r.get 'kooragang:calls:last_updated_at' } || '1970-01-01 00:00:00')
     updated_calls = Call.updated_calls(force ? DateTime.new() : last_updated_at)
 

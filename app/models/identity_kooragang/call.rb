@@ -7,7 +7,7 @@ module IdentityKooragang
     has_many :survey_results
     delegate :campaign, to: :callee, allow_nil: true
 
-    BATCH_AMOUNT=200
+    BATCH_AMOUNT=1000
 
     scope :updated_calls, -> (last_updated_at) {
       includes(:caller, { callee: [:campaign] }, :survey_results)
