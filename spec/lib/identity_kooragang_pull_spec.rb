@@ -2,6 +2,15 @@ require 'rails_helper'
 
 describe IdentityKooragang do
   context '#fetch_new_calls' do
+
+    before(:all) do
+      Sidekiq::Testing.inline!
+    end
+
+    after(:all) do
+      Sidekiq::Testing.fake!
+    end
+
     before(:each) do
       clean_external_database
       $redis.reset

@@ -66,11 +66,10 @@ module IdentityKooragang
     return false
   end
 
+
   def self.fetch_new_calls(force: false)
     ## Do not run method if another worker is currently processing this method
-    if self.worker_currenly_running?(__method__.to_s)
-      return
-    end
+    return if self.worker_currenly_running?(__method__.to_s)
 
     last_updated_at = Time.parse($redis.with { |r| r.get 'kooragang:calls:last_updated_at' } || '1970-01-01 00:00:00')
     updated_calls = Call.updated_calls(force ? DateTime.new() : last_updated_at)
@@ -78,51 +77,7 @@ module IdentityKooragang
     iteration_method = force ? :find_each : :each
 
     updated_calls.send(iteration_method) do |call|
-      contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
-      contactee = Member.upsert_member(phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name)
-
-      unless contactee
-        Notify.warning "Kooragang: Contactee Insert Failed", "Contactee #{call.inspect} could not be inserted because the contactee could not be created"
-        next
-      end
-
-      # Caller conditional upsert phone
-      if call.caller
-        contactor = Member.upsert_member(phones: [{ phone: call.caller.phone_number }])
-      else
-        contactor = nil
-      end
-
-      contact_campaign = ContactCampaign.find_or_create_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
-      contact_campaign.update_attributes!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
-
-      contact.update_attributes!(contactee: contactee,
-                                contactor: contactor,
-                                contact_campaign: contact_campaign,
-                                duration: call.ended_at - call.created_at,
-                                contact_type: CONTACT_TYPE,
-                                happened_at: call.created_at,
-                                status: call.status)
-
-      call.survey_results.each do |sr|
-        contact_response_key = ContactResponseKey.find_or_create_by(key: sr.question, contact_campaign: contact_campaign)
-        contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
-
-        # Process optouts
-        if Settings.kooragang.opt_out_subscription_id && sr.is_opt_out?
-          subscription = Subscription.find(Settings.kooragang.opt_out_subscription_id)
-          contactee.unsubscribe_from(subscription, 'kooragang:disposition')
-        end
-
-        ## RSVP contactee to nation builder
-        if not defined?(IdentityNationBuilder).nil? && sr.is_rsvp?
-          rows = ActiveModel::Serializer::CollectionSerializer.new(
-            [contactee],
-            serializer: IdentityNationBuilder::NationBuilderMemberSyncPushSerializer
-          ).as_json
-          IdentityNationBuilder::API.rsvp(sr.rsvp_site_slug, rows, sr.rsvp_event_id.to_i)
-        end
-      end
+      self.delay(retry: false, queue: 'low').handle_new_call(call.id)
     end
 
     unless updated_calls.empty?
@@ -130,5 +85,55 @@ module IdentityKooragang
     end
 
     updated_calls.size
+  end
+
+
+  def self.handle_new_call(call_id)
+    call = Call.find(call_id)
+    contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
+    contactee = Member.upsert_member(phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name)
+
+    unless contactee
+      Notify.warning "Kooragang: Contactee Insert Failed", "Contactee #{call.inspect} could not be inserted because the contactee could not be created"
+      return
+    end
+
+    # Caller conditional upsert phone
+    if call.caller
+      contactor = Member.upsert_member(phones: [{ phone: call.caller.phone_number }])
+    else
+      contactor = nil
+    end
+
+    contact_campaign = ContactCampaign.find_or_create_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
+    contact_campaign.update_attributes!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
+
+    contact.update_attributes!(contactee: contactee,
+                              contactor: contactor,
+                              contact_campaign: contact_campaign,
+                              duration: call.ended_at - call.created_at,
+                              contact_type: CONTACT_TYPE,
+                              happened_at: call.created_at,
+                              status: call.status)
+
+    call.survey_results.each do |sr|
+      contact_response_key = ContactResponseKey.find_or_create_by(key: sr.question, contact_campaign: contact_campaign)
+      contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
+
+      # Process optouts
+      if Settings.kooragang.opt_out_subscription_id && sr.is_opt_out?
+        subscription = Subscription.find(Settings.kooragang.opt_out_subscription_id)
+        contactee.unsubscribe_from(subscription, 'kooragang:disposition')
+      end
+
+      ## RSVP contactee to nation builder
+      if not defined?(IdentityNationBuilder).nil? && sr.is_rsvp?
+        rows = ActiveModel::Serializer::CollectionSerializer.new(
+          [contactee],
+          serializer: IdentityNationBuilder::NationBuilderMemberSyncPushSerializer
+        ).as_json
+        IdentityNationBuilder::API.rsvp(sr.rsvp_site_slug, rows, sr.rsvp_event_id.to_i)
+      end
+    end
   end
 end
