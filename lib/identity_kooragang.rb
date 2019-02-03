@@ -103,7 +103,10 @@ module IdentityKooragang
   def self.handle_new_call(call_id)
     call = Call.find(call_id)
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
-    contactee = Member.upsert_member(phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name)
+    contactee = Member.upsert_member(
+      {phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name},
+      "#{SYSTEM_NAME}:#{__method__.to_s}"
+    )
 
     unless contactee
       Notify.warning "Kooragang: Contactee Insert Failed", "Contactee #{call.inspect} could not be inserted because the contactee could not be created"
@@ -112,7 +115,10 @@ module IdentityKooragang
 
     # Caller conditional upsert phone
     if call.caller
-      contactor = Member.upsert_member(phones: [{ phone: call.caller.phone_number }])
+      contactor = Member.upsert_member(
+        {phones: [{ phone: call.caller.phone_number }]},
+        "#{SYSTEM_NAME}:#{__method__.to_s}"
+      )
     else
       contactor = nil
     end
