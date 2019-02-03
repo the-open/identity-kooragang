@@ -2,7 +2,7 @@ describe IdentityKooragang::KooragangMemberSyncPushSerializer do
   context 'serialize' do
     before(:each) do
       clean_external_database
-
+      Settings.stub_chain(:kooragang) { {} }
       @sync_id = 1
       @kooragang_campaign = FactoryBot.create(:kooragang_campaign)
       @external_system_params = JSON.generate({'campaign_id' => @kooragang_campaign.id, priority: 2, phone_type: 'mobile'})

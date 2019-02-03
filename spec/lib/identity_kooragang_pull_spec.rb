@@ -17,6 +17,8 @@ describe IdentityKooragang do
 
       @subscription = FactoryBot.create(:calling_subscription)
       Settings.stub_chain(:kooragang, :opt_out_subscription_id) { @subscription.id }
+      Settings.stub_chain(:kooragang, :push_batch_amount) { nil }
+      Settings.stub_chain(:kooragang, :pull_batch_amount) { nil }
 
       @time = Time.now - 120.seconds
       @kooragang_campaign = FactoryBot.create(:kooragang_campaign)
@@ -30,7 +32,7 @@ describe IdentityKooragang do
       end
     end
 
-   it 'should fetch the new calls and insert them' do
+    it 'should fetch the new calls and insert them' do
       IdentityKooragang.fetch_new_calls
       expect(Contact.count).to eq(3)
       member = Member.find_by_phone('61427700401')
@@ -196,6 +198,22 @@ describe IdentityKooragang do
 
         IdentityKooragang.fetch_new_calls
         expect(Contact.count).to eq(1)
+      end
+    end
+  end
+
+  context '#get_pull_batch_amount' do
+    context 'with no settings parameters set' do
+      it 'should return default class constant' do
+        expect(IdentityKooragang.get_pull_batch_amount).to eq(1000)
+      end
+    end
+    context 'with settings parameters set' do
+      before(:each) do
+        Settings.stub_chain(:kooragang, :pull_batch_amount) { 100 }
+      end
+      it 'should return set variable' do
+        expect(IdentityKooragang.get_pull_batch_amount).to eq(100)
       end
     end
   end

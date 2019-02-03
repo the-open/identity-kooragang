@@ -1,14 +1,15 @@
 require "identity_kooragang/engine"
 
 module IdentityKooragang
-  SYSTEM_NAME='kooragang'
-  BATCH_AMOUNT=1000
-  SYNCING='campaign'
-  CONTACT_TYPE='call'
-  ACTIVE_STATUS='active'
-  FINALISED_STATUS='finalised'
-  FAILED_STATUS='failed'
-  PULL_JOBS=[:fetch_new_calls]
+  SYSTEM_NAME = 'kooragang'
+  PULL_BATCH_AMOUNT = 1000
+  PUSH_BATCH_AMOUNT = 1000
+  SYNCING = 'campaign'
+  CONTACT_TYPE = 'call'
+  ACTIVE_STATUS = 'active'
+  FINALISED_STATUS = 'finalised'
+  FAILED_STATUS = 'failed'
+  PULL_JOBS = [[:fetch_new_calls, 5.minutes]]
 
   def self.push(sync_id, members, external_system_params)
     begin
@@ -30,7 +31,7 @@ module IdentityKooragang
       audience.update_attributes!(status: ACTIVE_STATUS)
       campaign_id = JSON.parse(external_system_params)['campaign_id'].to_i
       phone_type = JSON.parse(external_system_params)['phone_type'].to_s
-      members.in_batches(of: BATCH_AMOUNT).each_with_index do |batch_members, batch_index|
+      members.in_batches(of: get_push_batch_amount).each_with_index do |batch_members, batch_index|
         rows = ActiveModel::Serializer::CollectionSerializer.new(
           batch_members,
           serializer: KooragangMemberSyncPushSerializer,
@@ -66,6 +67,17 @@ module IdentityKooragang
     return false
   end
 
+  def self.get_pull_batch_amount
+    Settings.kooragang.pull_batch_amount || PULL_BATCH_AMOUNT
+  end
+
+  def self.get_push_batch_amount
+    Settings.kooragang.push_batch_amount || PUSH_BATCH_AMOUNT
+  end
+
+  def self.get_pull_jobs
+    defined?(PULL_JOBS) && PULL_JOBS.is_a?(Array) ? PULL_JOBS : []
+  end
 
   def self.fetch_new_calls(force: false)
     ## Do not run method if another worker is currently processing this method
