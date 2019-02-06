@@ -16,7 +16,7 @@ describe IdentityKooragang do
       $redis.reset
 
       @subscription = FactoryBot.create(:calling_subscription)
-      Settings.stub_chain(:kooragang, :opt_out_subscription_id) { @subscription.id }
+      Settings.stub_chain(:kooragang, :subscription_id) { @subscription.id }
       Settings.stub_chain(:kooragang, :push_batch_amount) { nil }
       Settings.stub_chain(:kooragang, :pull_batch_amount) { nil }
 

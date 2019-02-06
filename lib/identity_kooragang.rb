@@ -143,8 +143,8 @@ module IdentityKooragang
       contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
 
       # Process optouts
-      if Settings.kooragang.opt_out_subscription_id && sr.is_opt_out?
-        subscription = Subscription.find(Settings.kooragang.opt_out_subscription_id)
+      if Settings.kooragang.subscription_id && sr.is_opt_out?
+        subscription = Subscription.find(Settings.kooragang.subscription_id)
         contactee.unsubscribe_from(subscription, 'kooragang:disposition')
       end
 
