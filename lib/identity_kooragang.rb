@@ -9,7 +9,7 @@ module IdentityKooragang
   ACTIVE_STATUS = 'active'
   FINALISED_STATUS = 'finalised'
   FAILED_STATUS = 'failed'
-  PULL_JOBS = [[:fetch_new_calls, 5.minutes]]
+  PULL_JOBS = [[:fetch_new_calls, 5.minutes], [:fetch_active_campaigns, 10.minutes]]
 
   def self.push(sync_id, members, external_system_params)
     begin
@@ -103,7 +103,6 @@ module IdentityKooragang
     updated_calls.size
   end
 
-
   def self.handle_new_call(call_id)
     call = Call.find(call_id)
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
@@ -127,7 +126,7 @@ module IdentityKooragang
       contactor = nil
     end
 
-    contact_campaign = ContactCampaign.find_or_create_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
+    contact_campaign = ContactCampaign.find_or_initialize_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
     contact_campaign.update_attributes!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
 
     contact.update_attributes!(contactee: contactee,
@@ -139,7 +138,7 @@ module IdentityKooragang
                               status: call.status)
 
     call.survey_results.each do |sr|
-      contact_response_key = ContactResponseKey.find_or_create_by(key: sr.question, contact_campaign: contact_campaign)
+      contact_response_key = ContactResponseKey.find_or_create_by!(key: sr.question, contact_campaign: contact_campaign)
       contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
 
       # Process optouts
@@ -156,6 +155,31 @@ module IdentityKooragang
         ).as_json
         IdentityNationBuilder::API.rsvp(sr.rsvp_site_slug, rows, sr.rsvp_event_id.to_i)
       end
+    end
+  end
+
+  def self.fetch_active_campaigns(force: false)
+    ## Do not run method if another worker is currently processing this method
+    return if self.worker_currenly_running?(__method__.to_s)
+
+    active_campaigns = IdentityKooragang::Campaign.active
+
+    iteration_method = force ? :find_each : :each
+
+    active_campaigns.send(iteration_method) do |campaign|
+      self.delay(retry: false, queue: 'low').handle_campaign(campaign.id)
+    end
+
+    active_campaigns.size
+  end
+
+  def self.handle_campaign(campaign_id)
+    campaign = IdentityKooragang::Campaign.find(campaign_id)
+    contact_campaign = ContactCampaign.find_or_initialize_by(external_id: campaign.id, system: SYSTEM_NAME)
+    contact_campaign.update_attributes!(name: campaign.name, contact_type: CONTACT_TYPE)
+
+    campaign.questions.each do |k,v|
+      contact_response_key = ContactResponseKey.find_or_create_by!(key: k, contact_campaign: contact_campaign)
     end
   end
 end

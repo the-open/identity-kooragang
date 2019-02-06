@@ -3,7 +3,7 @@ module IdentityKooragang
     factory :kooragang_campaign, class: Campaign do
       name { Faker::Book.title }
       sync_to_identity { true }
-
+      questions { {} }
       factory :kooragang_campaign_with_rsvp_questions do
         questions {
           {

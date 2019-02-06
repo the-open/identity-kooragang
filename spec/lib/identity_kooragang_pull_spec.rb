@@ -202,6 +202,45 @@ describe IdentityKooragang do
     end
   end
 
+  context '#fetch_active_campaigns' do
+
+    before(:all) do
+      Sidekiq::Testing.inline!
+    end
+
+    after(:all) do
+      Sidekiq::Testing.fake!
+    end
+
+    before(:each) do
+      clean_external_database
+      2.times do
+        FactoryBot.create(:kooragang_campaign_with_rsvp_questions, status: 'active')
+      end
+      FactoryBot.create(:kooragang_campaign_with_rsvp_questions, status: 'paused')
+      FactoryBot.create(:kooragang_campaign_with_rsvp_questions, status: 'inactive')
+    end
+
+    it 'should create contact_campaigns' do
+      IdentityKooragang.fetch_active_campaigns
+      expect(ContactCampaign.count).to eq(2)
+      ContactCampaign.all.each do |campaign|
+        expect(campaign).to have_attributes(
+          name: 'Test',
+          system: IdentityKooragang::SYSTEM_NAME,
+          contact_type: IdentityKooragang::CONTACT_TYPE
+        )
+      end
+    end
+
+    it 'should create contact_response_keys' do
+      IdentityKooragang.fetch_active_campaigns
+      expect(ContactResponseKey.count).to eq(4)
+      expect(ContactResponseKey.where(key: 'disposition').count).to eq(2)
+      expect(ContactResponseKey.where(key: 'rsvp').count).to eq(2)
+    end
+  end
+
   context '#get_pull_batch_amount' do
     context 'with no settings parameters set' do
       it 'should return default class constant' do
