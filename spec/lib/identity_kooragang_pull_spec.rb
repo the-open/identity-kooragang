@@ -226,7 +226,6 @@ describe IdentityKooragang do
       expect(ContactCampaign.count).to eq(2)
       ContactCampaign.all.each do |campaign|
         expect(campaign).to have_attributes(
-          name: 'Test',
           system: IdentityKooragang::SYSTEM_NAME,
           contact_type: IdentityKooragang::CONTACT_TYPE
         )

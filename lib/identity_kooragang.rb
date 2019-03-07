@@ -148,7 +148,7 @@ module IdentityKooragang
       end
 
       ## RSVP contactee to nation builder
-      if not defined?(IdentityNationBuilder).nil? && sr.is_rsvp?
+      if defined?(IdentityNationBuilder) && sr.is_rsvp?
         rows = ActiveModel::Serializer::CollectionSerializer.new(
           [contactee],
           serializer: IdentityNationBuilder::NationBuilderMemberSyncPushSerializer
