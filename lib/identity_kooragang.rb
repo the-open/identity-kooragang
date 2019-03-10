@@ -129,13 +129,19 @@ module IdentityKooragang
     contact_campaign = ContactCampaign.find_or_initialize_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
     contact_campaign.update_attributes!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
 
+    additional_data = {}
+    if team = call.caller.try(:team)
+      additional_data[:team] = team.name
+    end
+
     contact.update_attributes!(contactee: contactee,
                               contactor: contactor,
                               contact_campaign: contact_campaign,
                               duration: call.ended_at - call.created_at,
                               contact_type: CONTACT_TYPE,
                               happened_at: call.created_at,
-                              status: call.status)
+                              status: call.status,
+                              data: additional_data )
 
     call.survey_results.each do |sr|
       contact_response_key = ContactResponseKey.find_or_create_by!(key: sr.question, contact_campaign: contact_campaign)

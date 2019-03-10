@@ -59,6 +59,7 @@ ActiveRecord::Schema.define(version: 0) do
     t.datetime "happened_at"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.json "data", default: '{}'
     t.index ["contact_campaign_id"], name: "index_contacts_on_contact_campaign_id"
     t.index ["contact_type"], name: "index_contacts_on_contact_type"
     t.index ["contactee_id"], name: "index_contacts_on_contactee_id"

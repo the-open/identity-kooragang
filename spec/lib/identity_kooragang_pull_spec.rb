@@ -22,10 +22,11 @@ describe IdentityKooragang do
 
       @time = Time.now - 120.seconds
       @kooragang_campaign = FactoryBot.create(:kooragang_campaign)
+      @team = FactoryBot.create(:kooragang_team)
 
       3.times do |n|
         callee = FactoryBot.create(:kooragang_callee, first_name: "Bob#{n}", phone_number: "6142770040#{n}", campaign: @kooragang_campaign)
-        caller = FactoryBot.create(:kooragang_caller, first_name: "Jacob#{n}", phone_number: "6142770042#{n}")
+        caller = FactoryBot.create(:kooragang_caller, first_name: "Jacob#{n}", phone_number: "6142770042#{n}", team: @team)
         call = FactoryBot.create(:kooragang_call, created_at: @time, callee: callee, caller: caller, ended_at: @time + 60.seconds, status: 'success')
         call.survey_results << FactoryBot.build(:kooragang_survey_result, question: 'disposition', answer: 'no answer')
         call.survey_results << FactoryBot.build(:kooragang_survey_result, question: 'voting_intention', answer: 'labor')
@@ -45,6 +46,11 @@ describe IdentityKooragang do
       IdentityKooragang.fetch_new_calls
       expect(Contact.first).to have_attributes(duration: 60, system: 'kooragang', contact_type: 'call', status: 'success')
       expect(Contact.first.happened_at.utc.to_s).to eq(@time.utc.to_s)
+    end
+
+    it 'should record the team that the call was with' do
+      IdentityKooragang.fetch_new_calls
+      expect(Contact.first.data['team']).to eq(@team.name)
     end
 
     it 'should opt out people that need it' do
