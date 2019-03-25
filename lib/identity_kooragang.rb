@@ -122,17 +122,17 @@ module IdentityKooragang
         {phones: [{ phone: call.caller.phone_number }]},
         "#{SYSTEM_NAME}:#{__method__.to_s}"
       )
+      team = Team.find_by_id(call.caller.team_id)
     else
       contactor = nil
+      team = nil
     end
 
     contact_campaign = ContactCampaign.find_or_initialize_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
     contact_campaign.update_attributes!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
 
     additional_data = {}
-    if team = call.caller.try(:team)
-      additional_data[:team] = team.name
-    end
+    additional_data[:team] = team.name if team
 
     contact.update_attributes!(contactee: contactee,
                               contactor: contactor,
