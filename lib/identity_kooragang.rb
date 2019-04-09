@@ -29,15 +29,18 @@ module IdentityKooragang
     begin
       audience = Audience.find_by_sync_id(sync_id)
       audience.update_attributes!(status: ACTIVE_STATUS)
-      campaign_id = JSON.parse(external_system_params)['campaign_id'].to_i
-      phone_type = JSON.parse(external_system_params)['phone_type'].to_s
+      params = JSON.parse(external_system_params)
+      campaign_id = params['campaign_id'].to_i
+      phone_type = params['phone_type'].to_s
+      include_rsvped_events = !!params['include_rsvped_events']
       members.in_batches(of: get_push_batch_amount).each_with_index do |batch_members, batch_index|
         rows = ActiveModel::Serializer::CollectionSerializer.new(
           batch_members,
           serializer: KooragangMemberSyncPushSerializer,
           audience_id: audience.id,
           campaign_id: campaign_id,
-          phone_type: phone_type
+          phone_type: phone_type,
+          include_rsvped_events: include_rsvped_events
         ).as_json
         write_result_count = Callee.add_members(rows)
 

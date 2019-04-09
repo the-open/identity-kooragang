@@ -45,5 +45,39 @@ describe IdentityKooragang::KooragangMemberSyncPushSerializer do
       ).as_json
       expect(rows.first[:phone_number]).to eq('61427700500')
     end
+
+    context 'with include_rsvped_events' do
+      let!(:event_1) { Event.create!(
+        name: 'test 1',
+        start_time: 2.hours.since,
+        location: 'location 1',
+        data: {"site_slug": "test", "status": "published", "path": "/test1", "location": "test 1", "start_time": "2019-04-10T11:00:00+11:00"}
+      ) }
+      let!(:event_2) { Event.create!(
+        name: 'test 2',
+        start_time: 2.days.since,
+        location: 'location 2',
+        data: {"site_slug": "test", "status": "published", "path": "/test2", "start_time": "2019-04-11T11:00:00+10:00"}
+      ) }
+      before do
+        EventRsvp.create!(member_id: @member.id, event_id: event_1.id)
+        EventRsvp.create!(member_id: @member.id, event_id: event_2.id)
+      end
+
+      it 'returns valid object' do
+        rows = ActiveModel::Serializer::CollectionSerializer.new(
+          [@member],
+          serializer: IdentityKooragang::KooragangMemberSyncPushSerializer,
+          audience_id: @audience.id,
+          campaign_id: @kooragang_campaign.id,
+          phone_type: 'mobile',
+          include_rsvped_events: true
+        ).as_json
+        expect(rows[0][:external_id]).to eq(ListMember.first.member_id)
+        data = JSON.parse(rows[0][:data])
+        expect(data['upcoming_rsvps']).to match(/#{event_1.name}/)
+        expect(data['upcoming_rsvps']).to match(/#{event_2.name}/)
+      end
+    end
   end
 end

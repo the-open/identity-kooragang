@@ -13,6 +13,9 @@
     <br/>
     <%= label_tag "kooragang[priority]", 'Priority: ' %>
     <%= number_field_tag "kooragang[priority]", 1, min: 1, max: 10 %>
+    <br/>
+    <%= label_tag "kooragang[include_rsvped_events]", 'Include RSVP\'d Event: ' %>
+    <%= check_box_tag "kooragang[include_rsvped_events]", 1 %>
   </div>
   <hr />
 </div>
