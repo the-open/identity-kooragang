@@ -105,7 +105,9 @@ describe IdentityKooragang do
     it 'should be idempotent' do
       IdentityKooragang.fetch_new_calls
       contact_hash = Contact.all.select('contactee_id, contactor_id, duration, system, contact_campaign_id').as_json
-      IdentityKooragang.fetch_new_calls
+      expect {
+        IdentityKooragang.fetch_new_calls(force: true)
+      }.to_not change{ ContactResponse.count }
       expect(Contact.all.select('contactee_id, contactor_id, duration, system, contact_campaign_id').as_json).to eq(contact_hash)
     end
 

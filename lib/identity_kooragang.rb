@@ -148,7 +148,7 @@ module IdentityKooragang
 
     call.survey_results.each do |sr|
       contact_response_key = ContactResponseKey.find_or_create_by!(key: sr.question, contact_campaign: contact_campaign)
-      contact_response_key.contact_responses << ContactResponse.new(contact: contact, value: sr.answer)
+      ContactResponse.find_or_create_by!(contact: contact, value: sr.answer, contact_response_key: contact_response_key)
 
       # Process optouts
       if Settings.kooragang.subscription_id && sr.is_opt_out?
@@ -188,7 +188,7 @@ module IdentityKooragang
     contact_campaign.update_attributes!(name: campaign.name, contact_type: CONTACT_TYPE)
 
     campaign.questions.each do |k,v|
-      contact_response_key = ContactResponseKey.find_or_create_by!(key: k, contact_campaign: contact_campaign)
+      ContactResponseKey.find_or_create_by!(key: k, contact_campaign: contact_campaign)
     end
   end
 end
