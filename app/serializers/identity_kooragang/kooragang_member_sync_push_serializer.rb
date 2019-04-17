@@ -25,7 +25,13 @@ module IdentityKooragang
 
     def data
       data = @object.flattened_custom_fields
+      data['address'] = @object.address
+      data['postcode'] = @object.postcode
       if instance_options[:include_rsvped_events]
+        data['nationbuilder_id'] = @object.member_external_ids
+                                          .where(system: 'nation_builder')
+                                          .first()
+                                          .try(:external_id)
         rsvps = EventRsvp.where(member_id: @object.id)
                          .joins(:event)
                          .where('events.start_time > now()')

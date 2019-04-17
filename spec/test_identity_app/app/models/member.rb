@@ -5,6 +5,7 @@ class Member < ApplicationRecord
   has_many :phone_numbers
   has_many :list_members
   has_many :member_subscriptions, dependent: :destroy
+  has_many :member_external_ids
   has_many :subscriptions, through: :member_subscriptions
   has_many :contacts_received, class_name: 'Contact', foreign_key: 'contactee_id'
   has_many :contacts_made, class_name: 'Contact', foreign_key: 'contactor_id'
@@ -58,6 +59,14 @@ class Member < ApplicationRecord
       .mobile
       .sort_by(&:updated_at)
       .last.try(:phone)
+  end
+
+  def address
+    'some test address'
+  end
+
+  def postcode
+    '2000'
   end
 
   def flattened_custom_fields

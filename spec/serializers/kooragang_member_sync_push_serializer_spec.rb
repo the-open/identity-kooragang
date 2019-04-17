@@ -28,7 +28,9 @@ describe IdentityKooragang::KooragangMemberSyncPushSerializer do
       expect(rows[0][:phone_number]).to eq(@member.phone)
       expect(rows[0][:campaign_id]).to eq(@kooragang_campaign.id)
       expect(rows[0][:audience_id]).to eq(@audience.id)
-      expect(rows[0][:data]).to eq("{\"secret\":\"me_likes\"}")
+      data = JSON.parse(rows[0][:data])
+      expect(data['address']).to eq(@member.address)
+      expect(data['postcode']).to eq(@member.postcode)
     end
 
     it "only returns the most recently updated phone number" do
@@ -47,6 +49,7 @@ describe IdentityKooragang::KooragangMemberSyncPushSerializer do
     end
 
     context 'with include_rsvped_events' do
+      let!(:nationbuilder_id) { '2' }
       let!(:event_1) { Event.create!(
         name: 'test 1',
         start_time: 2.hours.since,
@@ -62,6 +65,7 @@ describe IdentityKooragang::KooragangMemberSyncPushSerializer do
       before do
         EventRsvp.create!(member_id: @member.id, event_id: event_1.id)
         EventRsvp.create!(member_id: @member.id, event_id: event_2.id)
+        @member.member_external_ids.create!(system: 'nation_builder', external_id: nationbuilder_id)
       end
 
       it 'returns valid object' do
@@ -75,6 +79,7 @@ describe IdentityKooragang::KooragangMemberSyncPushSerializer do
         ).as_json
         expect(rows[0][:external_id]).to eq(ListMember.first.member_id)
         data = JSON.parse(rows[0][:data])
+        expect(data['nationbuilder_id']).to eq(nationbuilder_id)
         expect(data['upcoming_rsvps']).to match(/#{event_1.name}/)
         expect(data['upcoming_rsvps']).to match(/#{event_2.name}/)
       end
