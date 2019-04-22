@@ -53,6 +53,8 @@ GEM
       tzinfo (~> 1.1)
     arel (8.0.0)
     ast (2.4.0)
+    audited (4.8.0)
+      activerecord (>= 4.0, < 5.3)
     builder (3.2.3)
     byebug (10.0.2)
     case_transform (0.2)
@@ -202,6 +204,7 @@ PLATFORMS
 
 DEPENDENCIES
   active_model_serializers (~> 0.10.7)
+  audited (~> 4.7)
   byebug
   database_cleaner
   dotenv-rails

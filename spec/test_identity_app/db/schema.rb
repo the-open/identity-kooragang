@@ -59,7 +59,7 @@ ActiveRecord::Schema.define(version: 0) do
     t.datetime "happened_at"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.json "data", default: '{}'
+    t.json "data", default: "{}"
     t.index ["contact_campaign_id"], name: "index_contacts_on_contact_campaign_id"
     t.index ["contact_type"], name: "index_contacts_on_contact_type"
     t.index ["contactee_id"], name: "index_contacts_on_contactee_id"
@@ -101,6 +101,18 @@ ActiveRecord::Schema.define(version: 0) do
     t.datetime "updated_at"
   end
 
+  create_table "event_rsvps", id: :serial, force: :cascade do |t|
+    t.integer "event_id", null: false
+    t.integer "member_id", null: false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.datetime "deleted_at"
+    t.boolean "attended"
+    t.json "data", default: "{}"
+    t.index ["event_id"], name: "index_event_rsvps_on_event_id"
+    t.index ["member_id"], name: "index_event_rsvps_on_member_id"
+  end
+
   create_table "events", force: :cascade do |t|
     t.text "name"
     t.datetime "start_time"
@@ -128,22 +140,15 @@ ActiveRecord::Schema.define(version: 0) do
     t.json "data", default: "{}"
     t.index ["area_id"], name: "index_events_on_area_id"
     t.index ["campaign_id"], name: "index_events_on_campaign_id"
-    t.index ["external_id", "system", "subsystem"], name: "index_events_on_system", unique: true
+    t.index ["external_id", "system", "subsystem"], name: "index_events_on_external_source", unique: true
     t.index ["external_id"], name: "index_events_on_external_id"
     t.index ["host_id"], name: "index_events_on_host_id"
     t.index ["technical_type"], name: "index_events_on_technical_type"
   end
 
-  create_table "event_rsvps", id: :serial, force: :cascade do |t|
-    t.integer "event_id", null: false
-    t.integer "member_id", null: false
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.datetime "deleted_at"
-    t.boolean "attended"
-    t.json "data", default: "{}"
-    t.index ["event_id"], name: "index_event_rsvps_on_event_id"
-    t.index ["member_id"], name: "index_event_rsvps_on_member_id"
+  create_table "events_members", force: :cascade do |t|
+    t.integer "event_id"
+    t.integer "member_id"
   end
 
   create_table "list_members", id: :serial, force: :cascade do |t|
@@ -184,6 +189,7 @@ ActiveRecord::Schema.define(version: 0) do
     t.datetime "created_at"
     t.datetime "updated_at"
     t.text "unsubscribe_reason"
+    t.text "subscribe_reason"
     t.boolean "permanent"
     t.integer "unsubscribe_mailing_id"
     t.index ["member_id", "subscription_id"], name: "index_member_subscriptions_on_member_id_and_subscription_id", unique: true
@@ -312,6 +318,7 @@ ActiveRecord::Schema.define(version: 0) do
     t.bigint "list_id"
     t.bigint "contact_campaign_id"
     t.bigint "author_id"
+    t.json "reference_data", default: "{}"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["author_id"], name: "index_syncs_on_author_id"

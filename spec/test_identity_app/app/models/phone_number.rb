@@ -1,5 +1,7 @@
 class PhoneNumber < ApplicationRecord
   include ReadWriteIdentity
+  attr_accessor :audit_data
+
   belongs_to :member
 
   MOBILE_TYPE = 'mobile'

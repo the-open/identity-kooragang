@@ -23,4 +23,5 @@ group :development, :test do
   gem 'sidekiq-batch'
   gem 'sidekiq-limit_fetch'
   gem 'sidekiq-unique-jobs'
+  gem 'audited', '~> 4.7'
 end
