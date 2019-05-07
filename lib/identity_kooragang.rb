@@ -106,9 +106,10 @@ module IdentityKooragang
     ## Do not run method if another worker is currently processing this method
     yield 0, {}, {}, true if self.worker_currenly_running?(__method__.to_s)
 
+    started_at = DateTime.now
     last_updated_at = Time.parse($redis.with { |r| r.get 'kooragang:calls:last_updated_at' } || '1970-01-01 00:00:00')
     updated_calls = Call.updated_calls(force ? DateTime.new() : last_updated_at)
-
+    updated_calls_all = Call.updated_calls_all(force ? DateTime.new() : last_updated_at)
     iteration_method = force ? :find_each : :each
 
     updated_calls.send(iteration_method) do |call|
@@ -119,7 +120,22 @@ module IdentityKooragang
       $redis.with { |r| r.set 'kooragang:calls:last_updated_at', updated_calls.last.updated_at }
     end
 
-    yield updated_calls.size, updated_calls.pluck(:id), { scope: 'kooragang:calls:last_updated_at', from: last_updated_at, to: updated_calls.empty? ? nil : updated_calls.last.updated_at }, false
+    execution_time_seconds = ((DateTime.now - started_at) * 24 * 60 * 60).to_i
+    yield(
+      updated_calls.size,
+      updated_calls.pluck(:id),
+      {
+        scope: 'kooragang:calls:last_updated_at',
+        scope_limit: IdentityKooragang.get_pull_batch_amount,
+        from: last_updated_at,
+        to: updated_calls.empty? ? nil : updated_calls.last.updated_at,
+        started_at: started_at,
+        completed_at: DateTime.now,
+        execution_time_seconds: execution_time_seconds,
+        remaining_behind: updated_calls_all.count
+      },
+      false
+    )
   end
 
   def self.handle_new_call(sync_id, call_id)
@@ -196,6 +212,7 @@ module IdentityKooragang
         IdentityNationBuilder::API.rsvp(sr.rsvp_site_slug, rows, sr.rsvp_event_id.to_i)
       end
     end
+    Sync.update_report_if_last_record_for_import(sync_id, call_id)
   end
 
   def self.fetch_active_campaigns(sync_id, force: false)
@@ -210,7 +227,12 @@ module IdentityKooragang
       self.delay(retry: false, queue: 'low').handle_campaign(sync_id, campaign.id)
     end
 
-    yield active_campaigns.size, active_campaigns.pluck(:id), { }, false
+    yield(
+      active_campaigns.size,
+      active_campaigns.pluck(:id),
+      {},
+      false
+    )
   end
 
   def self.handle_campaign(sync_id, campaign_id)
