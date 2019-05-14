@@ -11,8 +11,8 @@
     <%= label_tag "kooragang[phone_type]", 'Phone Type: ' %>
     <%= select_tag "kooragang[phone_type]", options_for_select([['Any', 'all'], ['Mobile', 'mobile'], ['Landline', 'landline']]) %>
     <br/>
-    <%= label_tag "kooragang[priority]", 'Priority: ' %>
-    <%= number_field_tag "kooragang[priority]", 1, min: 1, max: 10 %>
+    <%= label_tag "kooragang[priority]", 'Priority (lower number is higher priority)' %>
+    <%= number_field_tag "kooragang[priority]", 20, min: 1, max: 100 %>
     <br/>
     <%= label_tag "kooragang[include_rsvped_events]", 'Include RSVP\'d Event: ' %>
     <%= check_box_tag "kooragang[include_rsvped_events]", 1 %>
