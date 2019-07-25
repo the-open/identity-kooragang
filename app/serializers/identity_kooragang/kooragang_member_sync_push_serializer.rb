@@ -40,6 +40,15 @@ module IdentityKooragang
           "#{index+1}. #{summarise_event(rsvp.event)}"
         }.join("\n")
       end
+      data["areas"] = @object.areas.each_with_index.map{|area, index|
+        {
+          name: area.name,
+          code: area.code,
+          area_type: area.area_type,
+          party: area.party,
+          representative_name: area.representative_name
+        }
+      }
       data.to_json
     end
 
