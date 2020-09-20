@@ -144,18 +144,14 @@ module IdentityKooragang
   end
 
   def self.handle_new_call(sync_id, call_id)
-    audit_data = {sync_id: sync_id}
     call = Call.find(call_id)
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
-    contact.audit_data = audit_data
 
     # Callee upsert phone against member_id
-    contactee = Member.upsert_member(
+    contactee = UpsertMember.call(
       {phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name, member_id: call.callee.external_id},
       entry_point: "#{SYSTEM_NAME}:#{__method__.to_s}",
-      audit_data: audit_data,
-      ignore_name_change: false,
-      strict_member_id_match: true
+      ignore_name_change: false
     )
 
     unless contactee
@@ -165,12 +161,10 @@ module IdentityKooragang
 
     # Caller conditional upsert phone against phone_number
     if call.caller
-      contactor = Member.upsert_member(
+      contactor = UpsertMember.call(
         {phones: [{ phone: call.caller.phone_number }]},
         entry_point: "#{SYSTEM_NAME}:#{__method__.to_s}",
-        audit_data: audit_data,
-        ignore_name_change: false,
-        strict_member_id_match: false
+        ignore_name_change: false
       )
       team = Team.find_by_id(call.caller.team_id)
     else
@@ -179,7 +173,6 @@ module IdentityKooragang
     end
 
     contact_campaign = ContactCampaign.find_or_initialize_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
-    contact_campaign.audit_data = audit_data
     contact_campaign.update!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
 
     additional_data = {}
@@ -196,16 +189,14 @@ module IdentityKooragang
 
     call.survey_results.each do |sr|
       contact_response_key = ContactResponseKey.find_or_initialize_by(key: sr.question, contact_campaign: contact_campaign)
-      contact_response_key.audit_data = audit_data
       contact_response_key.save! if contact_response_key.new_record?
       contact_response = ContactResponse.find_or_initialize_by(contact: contact, value: sr.answer, contact_response_key: contact_response_key)
-      contact_response.audit_data = audit_data
       contact_response.save! if contact_response.new_record? 
 
       # Process optouts
       if Settings.kooragang.subscription_id && sr.is_opt_out?
         subscription = Subscription.find(Settings.kooragang.subscription_id)
-        contactee.unsubscribe_from(subscription, 'kooragang:disposition', DateTime.now, nil, audit_data)
+        contactee.unsubscribe_from(subscription, 'kooragang:disposition', DateTime.now, nil)
       end
 
       ## RSVP contactee to nation builder
@@ -241,16 +232,13 @@ module IdentityKooragang
   end
 
   def self.handle_campaign(sync_id, campaign_id)
-    audit_data = {sync_id: sync_id}
 
     campaign = IdentityKooragang::Campaign.find(campaign_id)
     contact_campaign = ContactCampaign.find_or_initialize_by(external_id: campaign.id, system: SYSTEM_NAME)
-    contact_campaign.audit_data
     contact_campaign.update!(name: campaign.name, contact_type: CONTACT_TYPE) if contact_campaign.new_record?
 
     campaign.questions.each do |k,v|
       contact_response_key = ContactResponseKey.find_or_initialize_by(key: k, contact_campaign: contact_campaign)
-      contact_response_key.audit_data = audit_data
       contact_response_key.save! if contact_response_key.new_record?
     end
   end
