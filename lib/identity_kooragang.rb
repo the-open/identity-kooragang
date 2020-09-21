@@ -197,7 +197,7 @@ module IdentityKooragang
       # Process optouts
       if Settings.kooragang.subscription_id && sr.is_opt_out?
         subscription = Subscription.find(Settings.kooragang.subscription_id)
-        contactee.unsubscribe_from(subscription, 'kooragang:disposition', DateTime.now, nil)
+        contactee.unsubscribe_from(subscription, reason: 'kooragang:disposition', event_time: DateTime.now)
       end
 
       ## RSVP contactee to nation builder
@@ -209,7 +209,6 @@ module IdentityKooragang
         IdentityNationBuilder::API.rsvp(sr.rsvp_site_slug, rows, sr.rsvp_event_id.to_i)
       end
     end
-    Sync.update_report_if_last_record_for_import(sync_id, call_id)
   end
 
   def self.fetch_active_campaigns(sync_id, force: false)
