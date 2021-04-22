@@ -14,7 +14,7 @@ module IdentityKooragang
       .where('calls.ended_at is not null AND calls.callee_id is not null')
       .where('calls.updated_at >= ?', last_updated_at)
       .order('calls.updated_at')
-      .limit(IdentityKooragang.get_pull_batch_amount)
+      .limit(Settings.kooragang.pull_batch_amount)
     }
 
     scope :updated_calls_all, -> (last_updated_at) {
