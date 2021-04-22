@@ -2,8 +2,6 @@ require "identity_kooragang/engine"
 
 module IdentityKooragang
   SYSTEM_NAME = 'kooragang'
-  PULL_BATCH_AMOUNT = 1000
-  PUSH_BATCH_AMOUNT = 1000
   SYNCING = 'campaign'
   CONTACT_TYPE = 'call'
   ACTIVE_STATUS = 'active'
@@ -35,7 +33,7 @@ module IdentityKooragang
       campaign_id = params['campaign_id'].to_i
       phone_type = params['phone_type'].to_s
       include_rsvped_events = !!params['include_rsvped_events']
-      members.in_batches(of: get_push_batch_amount).each_with_index do |batch_members, batch_index|
+      members.in_batches(of: Settings.kooragang.push_batch_amount).each_with_index do |batch_members, batch_index|
         rows = ActiveModel::Serializer::CollectionSerializer.new(
           batch_members,
           serializer: KooragangMemberSyncPushSerializer,
@@ -89,14 +87,6 @@ module IdentityKooragang
     return false
   end
 
-  def self.get_pull_batch_amount
-    Settings.kooragang.pull_batch_amount || PULL_BATCH_AMOUNT
-  end
-
-  def self.get_push_batch_amount
-    Settings.kooragang.push_batch_amount || PUSH_BATCH_AMOUNT
-  end
-
   def self.get_pull_jobs
     defined?(PULL_JOBS) && PULL_JOBS.is_a?(Array) ? PULL_JOBS : []
   end
@@ -143,7 +133,7 @@ module IdentityKooragang
       updated_calls.pluck(:id),
       {
         scope: 'kooragang:calls:last_updated_at',
-        scope_limit: IdentityKooragang.get_pull_batch_amount,
+        scope_limit: Settings.kooragang.pull_batch_amount,
         from: last_updated_at,
         to: updated_calls.empty? ? nil : updated_calls.last.updated_at,
         started_at: started_at,
