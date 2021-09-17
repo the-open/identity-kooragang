@@ -18,7 +18,7 @@ module IdentityKooragang
       campaign_name = Campaign.find(campaign_id).name
       audience = Audience.create!(sync_id: sync_id, campaign_id: campaign_id, priority: priority)
       members = Member.where(id: member_ids).with_phone_type(phone_type)
-      yield members, campaign_name
+      yield members, campaign_name, external_system_params
     rescue => e
       audience.update_attributes!(status: FAILED_STATUS) if audience
       raise e
@@ -182,7 +182,7 @@ module IdentityKooragang
       contact_response_key = ContactResponseKey.find_or_initialize_by(key: sr.question, contact_campaign: contact_campaign)
       contact_response_key.save! if contact_response_key.new_record?
       contact_response = ContactResponse.find_or_initialize_by(contact: contact, value: sr.answer, contact_response_key: contact_response_key)
-      contact_response.save! if contact_response.new_record? 
+      contact_response.save! if contact_response.new_record?
 
       # Process optouts
       if Settings.kooragang.subscription_id && sr.is_opt_out?
