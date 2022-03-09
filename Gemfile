@@ -12,7 +12,8 @@ group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
   gem 'rspec-rails'
   gem 'rspec-mocks'
-  gem 'database_cleaner'
+  gem 'database_cleaner-active_record'
+  gem 'database_cleaner-redis'
   gem 'factory_bot_rails'
   gem 'rubocop', require: false
   gem 'pry'
@@ -26,4 +27,5 @@ group :development, :test do
   gem 'sidekiq-limit_fetch'
   gem 'sidekiq-unique-jobs'
   gem 'audited'
+  gem 'zip'
 end

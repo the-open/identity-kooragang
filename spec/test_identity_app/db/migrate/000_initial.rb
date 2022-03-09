@@ -101,22 +101,6 @@ class Initial < ActiveRecord::Migration[4.2]
     t.index ["system", "external_id"], name: "index_member_external_ids_on_system_and_external_id", unique: true
   end
 
-  create_table "member_subscriptions", id: :serial, force: :cascade do |t|
-    t.integer "subscription_id", null: false
-    t.integer "member_id", null: false
-    t.datetime "unsubscribed_at"
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.text "unsubscribe_reason"
-    t.text "subscribe_reason"
-    t.boolean "permanent"
-    t.integer "unsubscribe_mailing_id"
-    t.index ["member_id", "subscription_id"], name: "index_member_subscriptions_on_member_id_and_subscription_id", unique: true
-    t.index ["member_id"], name: "index_member_subscriptions_on_member_id"
-    t.index ["subscription_id"], name: "index_member_subscriptions_on_subscription_id"
-    t.index ["unsubscribe_mailing_id"], name: "index_member_subscriptions_on_unsubscribe_mailing_id"
-  end
-
   create_table "members", force: :cascade do |t|
     t.integer "cons_id"
     t.text "email"
@@ -179,6 +163,39 @@ class Initial < ActiveRecord::Migration[4.2]
     t.text "permission_slug"
     t.datetime "created_at"
     t.datetime "updated_at"
+  end
+
+  create_table "member_subscriptions", id: :serial, force: :cascade do |t|
+    t.integer "subscription_id", null: false
+    t.integer "member_id", null: false
+    t.datetime "unsubscribed_at"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.text "unsubscribe_reason"
+    t.boolean "permanent"
+    t.integer "unsubscribe_mailing_id"
+    t.string "subscribe_reason"
+    t.datetime "subscribed_at"
+    t.index ["member_id", "subscription_id"], name: "index_member_subscriptions_on_member_id_and_subscription_id", unique: true
+    t.index ["member_id"], name: "index_member_subscriptions_on_member_id"
+    t.index ["subscription_id"], name: "index_member_subscriptions_on_subscription_id"
+    t.index ["unsubscribe_mailing_id"], name: "index_member_subscriptions_on_unsubscribe_mailing_id"
+    t.index ["unsubscribed_at"], name: "index_member_subscriptions_on_unsubscribed_at"
+  end
+
+  create_table "addresses", force: :cascade do |t|
+    t.integer "member_id", null: false
+    t.text "line1"
+    t.text "line2"
+    t.text "town"
+    t.text "postcode"
+    t.text "country"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.integer "canonical_address_id"
+    t.string "state"
+    t.index ["canonical_address_id"], name: "index_addresses_on_canonical_address_id"
+    t.index ["member_id"], name: "index_addresses_on_member_id"
   end
 
   create_table "phone_numbers", force: :cascade do |t|
@@ -249,6 +266,40 @@ class Initial < ActiveRecord::Migration[4.2]
     t.integer "member_id", null: false
     t.index ["custom_field_key_id"], name: "index_custom_fields_on_custom_field_key_id"
     t.index ["member_id"], name: "index_custom_fields_on_member_id"
+  end
+
+  create_table "anonymization_log", force: :cascade do |t|
+    t.bigint "member_id", null: false
+    t.text "reason", null: false
+    t.json "external_ids"
+    t.datetime "anonymization_started_at", null: false
+    t.datetime "anonymization_finished_at"
+    t.index ["member_id"], name: "index_anonymization_log_on_member_id"
+  end
+
+  create_table "area_memberships", force: :cascade do |t|
+    t.integer "area_id", null: false
+    t.integer "member_id", null: false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.index ["area_id"], name: "index_area_memberships_on_area_id"
+    t.index ["member_id"], name: "index_area_memberships_on_member_id"
+  end
+
+  create_table "areas", force: :cascade do |t|
+    t.text "name"
+    t.text "code"
+    t.integer "mapit"
+    t.text "area_type"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.text "party"
+    t.text "runner_up_party"
+    t.integer "majority"
+    t.integer "vote_count"
+    t.text "representative_name"
+    t.text "representative_gender"
+    t.string "representative_identifier"
   end
 
   create_table "syncs", force: :cascade do |t|

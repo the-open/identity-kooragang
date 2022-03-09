@@ -2,22 +2,71 @@
 # of editing this file, please use the migrations feature of Active Record to
 # incrementally modify your database, and then regenerate this schema definition.
 #
-# Note that this schema.rb definition is the authoritative source for your
-# database schema. If you need to create the application database on another
-# system, you should be using db:schema:load, not running all the migrations
-# from scratch. The latter is a flawed and unsustainable approach (the more migrations
-# you'll amass, the slower it'll run and the greater likelihood for issues).
+# This file is the source Rails uses to define your schema when running `bin/rails
+# db:schema:load`. When creating a new database, `bin/rails db:schema:load` tends to
+# be faster and is potentially less error prone than running all of your
+# migrations from scratch. Old migrations may fail to apply correctly if those
+# migrations use external dependencies or application code.
 #
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema.define(version: 0) do
 
   # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
-  enable_extension "pg_trgm"
   enable_extension "btree_gin"
   enable_extension "btree_gist"
   enable_extension "intarray"
+  enable_extension "pg_trgm"
+  enable_extension "plpgsql"
+
+  create_table "addresses", force: :cascade do |t|
+    t.integer "member_id", null: false
+    t.text "line1"
+    t.text "line2"
+    t.text "town"
+    t.text "postcode"
+    t.text "country"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.integer "canonical_address_id"
+    t.string "state"
+    t.index ["canonical_address_id"], name: "index_addresses_on_canonical_address_id"
+    t.index ["member_id"], name: "index_addresses_on_member_id"
+  end
+
+  create_table "anonymization_log", force: :cascade do |t|
+    t.bigint "member_id", null: false
+    t.text "reason", null: false
+    t.json "external_ids"
+    t.datetime "anonymization_started_at", null: false
+    t.datetime "anonymization_finished_at"
+    t.index ["member_id"], name: "index_anonymization_log_on_member_id"
+  end
+
+  create_table "area_memberships", force: :cascade do |t|
+    t.integer "area_id", null: false
+    t.integer "member_id", null: false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.index ["area_id"], name: "index_area_memberships_on_area_id"
+    t.index ["member_id"], name: "index_area_memberships_on_member_id"
+  end
+
+  create_table "areas", force: :cascade do |t|
+    t.text "name"
+    t.text "code"
+    t.integer "mapit"
+    t.text "area_type"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.text "party"
+    t.text "runner_up_party"
+    t.integer "majority"
+    t.integer "vote_count"
+    t.text "representative_name"
+    t.text "representative_gender"
+    t.string "representative_identifier"
+  end
 
   create_table "contact_campaigns", id: :serial, force: :cascade do |t|
     t.text "name"
@@ -189,13 +238,15 @@ ActiveRecord::Schema.define(version: 0) do
     t.datetime "created_at"
     t.datetime "updated_at"
     t.text "unsubscribe_reason"
-    t.text "subscribe_reason"
     t.boolean "permanent"
     t.integer "unsubscribe_mailing_id"
+    t.string "subscribe_reason"
+    t.datetime "subscribed_at"
     t.index ["member_id", "subscription_id"], name: "index_member_subscriptions_on_member_id_and_subscription_id", unique: true
     t.index ["member_id"], name: "index_member_subscriptions_on_member_id"
     t.index ["subscription_id"], name: "index_member_subscriptions_on_subscription_id"
     t.index ["unsubscribe_mailing_id"], name: "index_member_subscriptions_on_unsubscribe_mailing_id"
+    t.index ["unsubscribed_at"], name: "index_member_subscriptions_on_unsubscribed_at"
   end
 
   create_table "members", force: :cascade do |t|
