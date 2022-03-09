@@ -120,7 +120,7 @@ module IdentityKooragang
     iteration_method = force ? :find_each : :each
 
     updated_calls.send(iteration_method) do |call|
-      self.delay(retry: false, queue: 'low').handle_new_call(sync_id, call.id)
+      self.delay(retry: false, queue: 'low').delayed_handle_new_call(sync_id, call.id)
     end
 
     unless updated_calls.empty?
@@ -145,7 +145,7 @@ module IdentityKooragang
     )
   end
 
-  def self.handle_new_call(sync_id, call_id)
+  def self.delayed_handle_new_call(sync_id, call_id)
     call = Call.find(call_id)
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
 
