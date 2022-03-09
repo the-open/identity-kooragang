@@ -174,8 +174,10 @@ module IdentityKooragang
       team = nil
     end
 
-    contact_campaign = ContactCampaign.find_or_initialize_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
-    contact_campaign.update!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
+    # Not including questions here by default since by the time we get
+    # to this point the campaign should have been synced by
+    # fetch_active_campaigns
+    contact_campaign = upsert_campaign(call.callee.campaign, false);
 
     additional_data = {}
     additional_data[:team] = team.name if team
@@ -224,7 +226,7 @@ module IdentityKooragang
     iteration_method = force ? :find_each : :each
 
     active_campaigns.send(iteration_method) do |campaign|
-      self.delay(retry: false, queue: 'low').handle_campaign(sync_id, campaign.id)
+      self.delay(retry: false, queue: 'low').delayed_update_campaign(sync_id, campaign.id)
     end
 
     yield(
@@ -235,15 +237,33 @@ module IdentityKooragang
     )
   end
 
-  def self.handle_campaign(sync_id, campaign_id)
-
+  def self.delayed_update_campaign(sync_id, campaign_id)
     campaign = IdentityKooragang::Campaign.find(campaign_id)
-    contact_campaign = ContactCampaign.find_or_initialize_by(external_id: campaign.id, system: SYSTEM_NAME)
-    contact_campaign.update!(name: campaign.name, contact_type: CONTACT_TYPE) if contact_campaign.new_record?
+    upsert_campaign(campaign, true)
+  end
 
-    campaign.questions.each do |k,v|
-      contact_response_key = ContactResponseKey.find_or_initialize_by(key: k, contact_campaign: contact_campaign)
-      contact_response_key.save! if contact_response_key.new_record?
+  private
+
+  def self.upsert_campaign(kg_campaign, update_campaign)
+    contact_campaign = ContactCampaign.find_or_initialize_by(
+      external_id: kg_campaign.id,
+      system: SYSTEM_NAME
+    )
+
+    if contact_campaign.new_record? || update_campaign
+      contact_campaign.update!(
+        name: kg_campaign.name,
+        contact_type: CONTACT_TYPE,
+      )
+
+      kg_campaign.questions.each do |k,v|
+        contact_response_key = ContactResponseKey.find_or_initialize_by(
+          key: k, contact_campaign: contact_campaign
+        )
+        contact_response_key.save! if contact_response_key.new_record?
+      end
     end
+
+    contact_campaign
   end
 end
