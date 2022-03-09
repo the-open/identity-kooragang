@@ -254,6 +254,8 @@ module IdentityKooragang
       contact_campaign.update!(
         name: kg_campaign.name,
         contact_type: CONTACT_TYPE,
+        created_at: kg_campaign.created_at,
+        updated_at: kg_campaign.updated_at,
       )
 
       kg_campaign.questions.each do |k,v|
