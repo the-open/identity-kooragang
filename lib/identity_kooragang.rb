@@ -182,14 +182,18 @@ module IdentityKooragang
     additional_data = {}
     additional_data[:team] = team.name if team
 
-    contact.update!(contactee: contactee,
-                    contactor: contactor,
-                    contact_campaign: contact_campaign,
-                    duration: call.ended_at - call.created_at,
-                    contact_type: CONTACT_TYPE,
-                    happened_at: call.created_at,
-                    status: call.status,
-                    data: additional_data )
+    contact.update!(
+      contactee: contactee,
+      contactor: contactor,
+      contact_campaign: contact_campaign,
+      duration: call.ended_at - call.created_at,
+      contact_type: CONTACT_TYPE,
+      created_at: call.created_at,
+      updated_at: call.updated_at,
+      happened_at: call.created_at,
+      status: call.status,
+      data: additional_data
+    )
 
     call.survey_results.each do |sr|
       contact_response_key = ContactResponseKey.find_or_initialize_by(key: sr.question, contact_campaign: contact_campaign)
