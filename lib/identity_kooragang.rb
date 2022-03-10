@@ -124,7 +124,13 @@ module IdentityKooragang
     end
 
     unless updated_calls.empty?
-      $redis.with { |r| r.set 'kooragang:calls:last_updated_at', updated_calls.last.updated_at }
+      $redis.with { |r|
+        # Use to_s(:inspect) here since KG stores timestamps with
+        # millisecond precision, but plain [Date]Time.to_s will
+        # truncate the milliseconds, leading to the most recent call
+        # allways being re-sync'ed.
+        r.set 'kooragang:calls:last_updated_at', updated_calls.last.updated_at.utc.to_s(:inspect)
+      }
     end
 
     execution_time_seconds = ((DateTime.now - started_at) * 24 * 60 * 60).to_i
