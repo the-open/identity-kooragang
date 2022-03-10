@@ -152,7 +152,7 @@ module IdentityKooragang
     # Callee upsert phone against member_id
     contactee = UpsertMember.call(
       {phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name, member_id: call.callee.external_id},
-      entry_point: "#{SYSTEM_NAME}:#{__method__.to_s}",
+      entry_point: "#{SYSTEM_NAME}",
       ignore_name_change: false
     )
 
@@ -165,7 +165,7 @@ module IdentityKooragang
     if call.caller
       contactor = UpsertMember.call(
         {phones: [{ phone: call.caller.phone_number }]},
-        entry_point: "#{SYSTEM_NAME}:#{__method__.to_s}",
+        entry_point: "#{SYSTEM_NAME}",
         ignore_name_change: false
       )
       team = Team.find_by_id(call.caller.team_id)
