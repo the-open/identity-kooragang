@@ -20,7 +20,7 @@ module IdentityKooragang
       members = Member.where(id: member_ids).with_phone_type(phone_type)
       yield members, campaign_name
     rescue => e
-      audience.update_attributes!(status: FAILED_STATUS) if audience
+      audience.update!(status: FAILED_STATUS) if audience
       raise e
     end
   end
@@ -28,7 +28,7 @@ module IdentityKooragang
   def self.push_in_batches(sync_id, members, external_system_params)
     begin
       audience = Audience.find_by_sync_id(sync_id)
-      audience.update_attributes!(status: ACTIVE_STATUS)
+      audience.update!(status: ACTIVE_STATUS)
       params = JSON.parse(external_system_params)
       campaign_id = params['campaign_id'].to_i
       phone_type = params['phone_type'].to_s
@@ -46,9 +46,9 @@ module IdentityKooragang
 
         yield batch_index, write_result_count
       end
-      audience.update_attributes!(status: FINALISED_STATUS)
+      audience.update!(status: FINALISED_STATUS)
     rescue => e
-      audience.update_attributes!(status: FAILED_STATUS)
+      audience.update!(status: FAILED_STATUS)
       raise e
     end
   end

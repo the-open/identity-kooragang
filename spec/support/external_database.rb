@@ -31,9 +31,13 @@ module ExternalDatabaseHelpers
     end
 
     def clean
+      AreaMembership.all.destroy_all
+      Area.all.destroy_all
+      Address.all.destroy_all
       PhoneNumber.all.destroy_all
       ListMember.all.destroy_all
       List.all.destroy_all
+      Member.all.destroy_all
       Member.all.destroy_all
       MemberSubscription.all.destroy_all
       Subscription.all.destroy_all
