@@ -6,11 +6,12 @@ module IdentityKooragang
     has_many :audiences
 
     ACTIVE_STATUS='active'
+    INACTIVE_STATUS='inactive'
 
-    scope :active, -> {
-      where('sync_to_identity')
-      .where('status = ?', ACTIVE_STATUS)
-      .order('created_at')
+    scope :syncable, -> {
+      where(sync_to_identity: true)
+        .where.not(status: INACTIVE_STATUS)
+        .order('created_at')
     }
   end
 end

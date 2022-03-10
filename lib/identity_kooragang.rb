@@ -7,7 +7,7 @@ module IdentityKooragang
   ACTIVE_STATUS = 'active'
   FINALISED_STATUS = 'finalised'
   FAILED_STATUS = 'failed'
-  PULL_JOBS = [[:fetch_new_calls, 5.minutes], [:fetch_active_campaigns, 10.minutes]]
+  PULL_JOBS = [[:fetch_new_calls, 5.minutes], [:fetch_current_campaigns, 10.minutes]]
   MEMBER_RECORD_DATA_TYPE='object'
 
   def self.push(sync_id, member_ids, external_system_params)
@@ -214,24 +214,23 @@ module IdentityKooragang
     end
   end
 
-  def self.fetch_active_campaigns(sync_id, force: false)
+  def self.fetch_current_campaigns(sync_id, force: false)
     ## Do not run method if another worker is currently processing this method
     if self.worker_currently_running?(__method__.to_s, sync_id)
       yield 0, {}, {}, true
       return
     end
 
-    active_campaigns = IdentityKooragang::Campaign.active
-
+    campaigns = IdentityKooragang::Campaign.syncable
     iteration_method = force ? :find_each : :each
 
-    active_campaigns.send(iteration_method) do |campaign|
+    campaigns.send(iteration_method) do |campaign|
       self.delay(retry: false, queue: 'low').delayed_update_campaign(sync_id, campaign.id)
     end
 
     yield(
-      active_campaigns.size,
-      active_campaigns.pluck(:id),
+      campaigns.size,
+      campaigns.pluck(:id),
       {},
       false
     )

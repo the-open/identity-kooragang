@@ -225,7 +225,7 @@ describe IdentityKooragang do
     end
   end
 
-  context '#fetch_active_campaigns' do
+  context '#fetch_current_campaigns' do
 
     before(:all) do
       Sidekiq::Testing.inline!
@@ -246,8 +246,8 @@ describe IdentityKooragang do
     end
 
     it 'should create contact_campaigns' do
-      IdentityKooragang.fetch_active_campaigns(@sync_id) {}
-      expect(ContactCampaign.count).to eq(2)
+      IdentityKooragang.fetch_current_campaigns(@sync_id) {}
+      expect(ContactCampaign.count).to eq(3)
       ContactCampaign.all.each do |campaign|
         expect(campaign).to have_attributes(
           system: IdentityKooragang::SYSTEM_NAME,
@@ -257,10 +257,10 @@ describe IdentityKooragang do
     end
 
     it 'should create contact_response_keys' do
-      IdentityKooragang.fetch_active_campaigns(@sync_id) {}
-      expect(ContactResponseKey.count).to eq(4)
-      expect(ContactResponseKey.where(key: 'disposition').count).to eq(2)
-      expect(ContactResponseKey.where(key: 'rsvp').count).to eq(2)
+      IdentityKooragang.fetch_current_campaigns(@sync_id) {}
+      expect(ContactResponseKey.count).to eq(6)
+      expect(ContactResponseKey.where(key: 'disposition').count).to eq(3)
+      expect(ContactResponseKey.where(key: 'rsvp').count).to eq(3)
     end
   end
 end
