@@ -79,11 +79,11 @@ module IdentityKooragang
         worker_method_name == method_name &&
         worker_sync_id != sync_id)
       if already_running
-        puts ">>> #{SYSTEM_NAME.titleize} #{method_name} skipping as worker already running ..."
+        Rails.logger.info "#{SYSTEM_NAME.titleize} #{method_name} skipping as worker already running ..."
         return true
       end
     end
-    puts ">>> #{SYSTEM_NAME.titleize} #{method_name} running ..."
+    Rails.logger.info "#{SYSTEM_NAME.titleize} #{method_name} running ..."
     return false
   end
 
@@ -114,7 +114,10 @@ module IdentityKooragang
     end
 
     started_at = DateTime.now
-    last_updated_at = Time.parse($redis.with { |r| r.get 'kooragang:calls:last_updated_at' } || '1970-01-01 00:00:00')
+    redis_time = $redis.with { |r| r.get 'kooragang:calls:last_updated_at' }
+    last_updated_at = Time.parse(redis_time || '1970-01-01 00:00:00 UTC')
+    Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Fetching calls from: #{last_updated_at.utc.to_s(:inspect)} (redis: '#{redis_time}')"
+
     updated_calls = Call.updated_calls(force ? DateTime.new() : last_updated_at)
     updated_calls_all = Call.updated_calls_all(force ? DateTime.new() : last_updated_at)
     iteration_method = force ? :find_each : :each
@@ -152,6 +155,7 @@ module IdentityKooragang
   end
 
   def self.handle_new_call(sync_id, call)
+    Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Handling call: #{call.id}/#{call.updated_at.utc.to_s(:inspect)}"
 
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
 
@@ -163,7 +167,7 @@ module IdentityKooragang
     )
 
     unless contactee
-      Notify.warning "Kooragang: Contactee Insert Failed", "Contactee #{call.inspect} could not be inserted because the contactee could not be created"
+      Rails.logger.error "#{SYSTEM_NAME.titleize} #{sync_id}: Contactee #{call.inspect} could not be inserted because the contactee could not be created"
       return
     end
 
@@ -233,7 +237,7 @@ module IdentityKooragang
 
     campaigns = IdentityKooragang::Campaign.syncable
     campaigns.each { |campaign|
-      Rails.logger.info '#{SYSTEM_NAME.titleize} #{sync_id}: Updating campaign #{campaign_id}'
+      Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Updating campaign #{campaign.id}"
       upsert_campaign(campaign, true)
     }
 

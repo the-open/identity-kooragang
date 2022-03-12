@@ -155,8 +155,6 @@ describe IdentityKooragang do
       callee = FactoryBot.create(:kooragang_callee, phone_number: '6142709', campaign: @kooragang_campaign)
       call = FactoryBot.create(:kooragang_call, created_at: @time, callee: callee, ended_at: @time + 60.seconds, status: 'success')
 
-      expect(Notify).to receive(:warning)
-
       IdentityKooragang.fetch_new_calls(@sync_id) {}
       expect(Contact.count).to eq(3)
     end
