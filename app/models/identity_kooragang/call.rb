@@ -1,6 +1,5 @@
 module IdentityKooragang
-  class Call < ApplicationRecord
-    include ReadOnly
+  class Call < ReadOnly
     self.table_name = "calls"
     belongs_to :callee
     belongs_to :caller, optional: true
