@@ -114,7 +114,7 @@ module IdentityKooragang
     end
 
     started_at = DateTime.now
-    redis_time = $redis.with { |r| r.get 'kooragang:calls:last_updated_at' }
+    redis_time = Sidekiq.redis { |r| r.get 'kooragang:calls:last_updated_at' }
     last_updated_at = Time.parse(redis_time || '1970-01-01 00:00:00 UTC')
     Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Fetching calls from: #{last_updated_at.utc.to_s(:inspect)} (redis: '#{redis_time}')"
 
@@ -127,7 +127,7 @@ module IdentityKooragang
     }
 
     unless updated_calls.empty?
-      $redis.with { |r|
+      Sidekiq.redis { |r|
         # Use to_s(:inspect) here since KG stores timestamps with
         # millisecond precision, but plain [Date]Time.to_s will
         # truncate the milliseconds, leading to the most recent call
