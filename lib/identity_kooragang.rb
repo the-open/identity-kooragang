@@ -119,9 +119,9 @@ module IdentityKooragang
     updated_calls_all = Call.updated_calls_all(force ? DateTime.new() : last_updated_at)
     iteration_method = force ? :find_each : :each
 
-    updated_calls.send(iteration_method) do |call|
-      self.delay(retry: false, queue: 'low').delayed_handle_new_call(sync_id, call.id)
-    end
+    updated_calls.each { |call|
+      handle_new_call(sync_id, call)
+    }
 
     unless updated_calls.empty?
       $redis.with { |r|
@@ -151,8 +151,8 @@ module IdentityKooragang
     )
   end
 
-  def self.delayed_handle_new_call(sync_id, call_id)
-    call = Call.find(call_id)
+  def self.handle_new_call(sync_id, call)
+
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
 
     # Callee upsert phone against member_id
@@ -232,11 +232,10 @@ module IdentityKooragang
     end
 
     campaigns = IdentityKooragang::Campaign.syncable
-    iteration_method = force ? :find_each : :each
-
-    campaigns.send(iteration_method) do |campaign|
-      self.delay(retry: false, queue: 'low').delayed_update_campaign(sync_id, campaign.id)
-    end
+    campaigns.each { |campaign|
+      Rails.logger.info '#{SYSTEM_NAME.titleize} #{sync_id}: Updating campaign #{campaign_id}'
+      upsert_campaign(campaign, true)
+    }
 
     yield(
       campaigns.size,
@@ -244,11 +243,6 @@ module IdentityKooragang
       {},
       false
     )
-  end
-
-  def self.delayed_update_campaign(sync_id, campaign_id)
-    campaign = IdentityKooragang::Campaign.find(campaign_id)
-    upsert_campaign(campaign, true)
   end
 
   private
