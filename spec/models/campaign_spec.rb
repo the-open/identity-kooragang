@@ -1,5 +1,5 @@
 describe IdentityKooragang::Campaign do
-  context '#active' do
+  context '#syncable' do
     before(:each) do
       clean_external_database
       2.times do
@@ -10,11 +10,11 @@ describe IdentityKooragang::Campaign do
       FactoryBot.create(:kooragang_campaign, status: 'inactive')
     end
 
-    it 'returns the active campaigns' do
-      expect(IdentityKooragang::Campaign.active.count).to eq(2)
-      IdentityKooragang::Campaign.active.each do |campaign|
-        expect(campaign).to have_attributes(status: 'active')
+    it 'returns syncable campaigns' do
+      IdentityKooragang::Campaign.syncable.each do |campaign|
+        expect(campaign).not_to have_attributes(status: 'inactive')
       end
+      expect(IdentityKooragang::Campaign.syncable.count).to eq(3)
     end
   end
 end

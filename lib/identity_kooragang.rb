@@ -7,7 +7,7 @@ module IdentityKooragang
   ACTIVE_STATUS = 'active'
   FINALISED_STATUS = 'finalised'
   FAILED_STATUS = 'failed'
-  PULL_JOBS = [[:fetch_new_calls, 5.minutes], [:fetch_active_campaigns, 10.minutes]]
+  PULL_JOBS = [[:fetch_new_calls, 5.minutes], [:fetch_current_campaigns, 10.minutes]]
   MEMBER_RECORD_DATA_TYPE='object'
 
   def self.push(sync_id, member_ids, external_system_params)
@@ -79,11 +79,11 @@ module IdentityKooragang
         worker_method_name == method_name &&
         worker_sync_id != sync_id)
       if already_running
-        puts ">>> #{SYSTEM_NAME.titleize} #{method_name} skipping as worker already running ..."
+        Rails.logger.info "#{SYSTEM_NAME.titleize} #{method_name} skipping as worker already running ..."
         return true
       end
     end
-    puts ">>> #{SYSTEM_NAME.titleize} #{method_name} running ..."
+    Rails.logger.info "#{SYSTEM_NAME.titleize} #{method_name} running ..."
     return false
   end
 
@@ -114,17 +114,26 @@ module IdentityKooragang
     end
 
     started_at = DateTime.now
-    last_updated_at = Time.parse($redis.with { |r| r.get 'kooragang:calls:last_updated_at' } || '1970-01-01 00:00:00')
+    redis_time = Sidekiq.redis { |r| r.get 'kooragang:calls:last_updated_at' }
+    last_updated_at = Time.parse(redis_time || '1970-01-01 00:00:00 UTC')
+    Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Fetching calls from: #{last_updated_at.utc.to_s(:inspect)} (redis: '#{redis_time}')"
+
     updated_calls = Call.updated_calls(force ? DateTime.new() : last_updated_at)
     updated_calls_all = Call.updated_calls_all(force ? DateTime.new() : last_updated_at)
     iteration_method = force ? :find_each : :each
 
-    updated_calls.send(iteration_method) do |call|
-      self.delay(retry: false, queue: 'low').handle_new_call(sync_id, call.id)
-    end
+    updated_calls.each { |call|
+      handle_new_call(sync_id, call)
+    }
 
     unless updated_calls.empty?
-      $redis.with { |r| r.set 'kooragang:calls:last_updated_at', updated_calls.last.updated_at }
+      Sidekiq.redis { |r|
+        # Use to_s(:inspect) here since KG stores timestamps with
+        # millisecond precision, but plain [Date]Time.to_s will
+        # truncate the milliseconds, leading to the most recent call
+        # allways being re-sync'ed.
+        r.set 'kooragang:calls:last_updated_at', updated_calls.last.updated_at.utc.to_s(:inspect)
+      }
     end
 
     execution_time_seconds = ((DateTime.now - started_at) * 24 * 60 * 60).to_i
@@ -145,19 +154,20 @@ module IdentityKooragang
     )
   end
 
-  def self.handle_new_call(sync_id, call_id)
-    call = Call.find(call_id)
+  def self.handle_new_call(sync_id, call)
+    Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Handling call: #{call.id}/#{call.updated_at.utc.to_s(:inspect)}"
+
     contact = Contact.find_or_initialize_by(external_id: call.id.to_s, system: SYSTEM_NAME)
 
     # Callee upsert phone against member_id
     contactee = UpsertMember.call(
       {phones: [{ phone: call.callee.phone_number }], firstname: call.callee.first_name, member_id: call.callee.external_id},
-      entry_point: "#{SYSTEM_NAME}:#{__method__.to_s}",
+      entry_point: "#{SYSTEM_NAME}",
       ignore_name_change: false
     )
 
     unless contactee
-      Notify.warning "Kooragang: Contactee Insert Failed", "Contactee #{call.inspect} could not be inserted because the contactee could not be created"
+      Rails.logger.error "#{SYSTEM_NAME.titleize} #{sync_id}: Contactee #{call.inspect} could not be inserted because the contactee could not be created"
       return
     end
 
@@ -165,7 +175,7 @@ module IdentityKooragang
     if call.caller
       contactor = UpsertMember.call(
         {phones: [{ phone: call.caller.phone_number }]},
-        entry_point: "#{SYSTEM_NAME}:#{__method__.to_s}",
+        entry_point: "#{SYSTEM_NAME}",
         ignore_name_change: false
       )
       team = Team.find_by_id(call.caller.team_id)
@@ -174,20 +184,26 @@ module IdentityKooragang
       team = nil
     end
 
-    contact_campaign = ContactCampaign.find_or_initialize_by(external_id: call.callee.campaign.id, system: SYSTEM_NAME)
-    contact_campaign.update!(name: call.callee.campaign.name, contact_type: CONTACT_TYPE)
+    # Not including questions here by default since by the time we get
+    # to this point the campaign should have been synced by
+    # fetch_active_campaigns
+    contact_campaign = upsert_campaign(call.callee.campaign, false);
 
     additional_data = {}
     additional_data[:team] = team.name if team
 
-    contact.update!(contactee: contactee,
-                    contactor: contactor,
-                    contact_campaign: contact_campaign,
-                    duration: call.ended_at - call.created_at,
-                    contact_type: CONTACT_TYPE,
-                    happened_at: call.created_at,
-                    status: call.status,
-                    data: additional_data )
+    contact.update!(
+      contactee: contactee,
+      contactor: contactor,
+      contact_campaign: contact_campaign,
+      duration: call.ended_at - call.created_at,
+      contact_type: CONTACT_TYPE,
+      created_at: call.created_at,
+      updated_at: call.updated_at,
+      happened_at: call.created_at,
+      status: call.status,
+      data: additional_data
+    )
 
     call.survey_results.each do |sr|
       contact_response_key = ContactResponseKey.find_or_initialize_by(key: sr.question, contact_campaign: contact_campaign)
@@ -212,38 +228,51 @@ module IdentityKooragang
     end
   end
 
-  def self.fetch_active_campaigns(sync_id, force: false)
+  def self.fetch_current_campaigns(sync_id, force: false)
     ## Do not run method if another worker is currently processing this method
     if self.worker_currently_running?(__method__.to_s, sync_id)
       yield 0, {}, {}, true
       return
     end
 
-    active_campaigns = IdentityKooragang::Campaign.active
-
-    iteration_method = force ? :find_each : :each
-
-    active_campaigns.send(iteration_method) do |campaign|
-      self.delay(retry: false, queue: 'low').handle_campaign(sync_id, campaign.id)
-    end
+    campaigns = IdentityKooragang::Campaign.syncable
+    campaigns.each { |campaign|
+      Rails.logger.info "#{SYSTEM_NAME.titleize} #{sync_id}: Updating campaign #{campaign.id}"
+      upsert_campaign(campaign, true)
+    }
 
     yield(
-      active_campaigns.size,
-      active_campaigns.pluck(:id),
+      campaigns.size,
+      campaigns.pluck(:id),
       {},
       false
     )
   end
 
-  def self.handle_campaign(sync_id, campaign_id)
+  private
 
-    campaign = IdentityKooragang::Campaign.find(campaign_id)
-    contact_campaign = ContactCampaign.find_or_initialize_by(external_id: campaign.id, system: SYSTEM_NAME)
-    contact_campaign.update!(name: campaign.name, contact_type: CONTACT_TYPE) if contact_campaign.new_record?
+  def self.upsert_campaign(kg_campaign, update_campaign)
+    contact_campaign = ContactCampaign.find_or_initialize_by(
+      external_id: kg_campaign.id,
+      system: SYSTEM_NAME
+    )
 
-    campaign.questions.each do |k,v|
-      contact_response_key = ContactResponseKey.find_or_initialize_by(key: k, contact_campaign: contact_campaign)
-      contact_response_key.save! if contact_response_key.new_record?
+    if contact_campaign.new_record? || update_campaign
+      contact_campaign.update!(
+        name: kg_campaign.name,
+        contact_type: CONTACT_TYPE,
+        created_at: kg_campaign.created_at,
+        updated_at: kg_campaign.updated_at,
+      )
+
+      kg_campaign.questions.each do |k,v|
+        contact_response_key = ContactResponseKey.find_or_initialize_by(
+          key: k, contact_campaign: contact_campaign
+        )
+        contact_response_key.save! if contact_response_key.new_record?
+      end
     end
+
+    contact_campaign
   end
 end

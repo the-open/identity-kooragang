@@ -1,6 +1,5 @@
 module IdentityKooragang
-  class Callee < ApplicationRecord
-    include ReadWrite
+  class Callee < ReadWrite
     include ConnectionExtension
     self.table_name = "callees"
     belongs_to :campaign

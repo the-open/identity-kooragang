@@ -1,6 +1,5 @@
 module IdentityKooragang
-  class SurveyResult < ApplicationRecord
-    include ReadOnly
+  class SurveyResult < ReadOnly
     self.table_name = "survey_results"
     belongs_to :call
 

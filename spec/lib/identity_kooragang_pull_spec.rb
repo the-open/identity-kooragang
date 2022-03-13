@@ -18,14 +18,6 @@ describe IdentityKooragang do
 
   context '#fetch_new_calls' do
 
-    before(:all) do
-      Sidekiq::Testing.inline!
-    end
-
-    after(:all) do
-      Sidekiq::Testing.fake!
-    end
-
     before(:each) do
       clean_external_database
       $redis.reset
@@ -163,8 +155,6 @@ describe IdentityKooragang do
       callee = FactoryBot.create(:kooragang_callee, phone_number: '6142709', campaign: @kooragang_campaign)
       call = FactoryBot.create(:kooragang_call, created_at: @time, callee: callee, ended_at: @time + 60.seconds, status: 'success')
 
-      expect(Notify).to receive(:warning)
-
       IdentityKooragang.fetch_new_calls(@sync_id) {}
       expect(Contact.count).to eq(3)
     end
@@ -225,15 +215,7 @@ describe IdentityKooragang do
     end
   end
 
-  context '#fetch_active_campaigns' do
-
-    before(:all) do
-      Sidekiq::Testing.inline!
-    end
-
-    after(:all) do
-      Sidekiq::Testing.fake!
-    end
+  context '#fetch_current_campaigns' do
 
     before(:each) do
       clean_external_database
@@ -246,8 +228,8 @@ describe IdentityKooragang do
     end
 
     it 'should create contact_campaigns' do
-      IdentityKooragang.fetch_active_campaigns(@sync_id) {}
-      expect(ContactCampaign.count).to eq(2)
+      IdentityKooragang.fetch_current_campaigns(@sync_id) {}
+      expect(ContactCampaign.count).to eq(3)
       ContactCampaign.all.each do |campaign|
         expect(campaign).to have_attributes(
           system: IdentityKooragang::SYSTEM_NAME,
@@ -257,10 +239,10 @@ describe IdentityKooragang do
     end
 
     it 'should create contact_response_keys' do
-      IdentityKooragang.fetch_active_campaigns(@sync_id) {}
-      expect(ContactResponseKey.count).to eq(4)
-      expect(ContactResponseKey.where(key: 'disposition').count).to eq(2)
-      expect(ContactResponseKey.where(key: 'rsvp').count).to eq(2)
+      IdentityKooragang.fetch_current_campaigns(@sync_id) {}
+      expect(ContactResponseKey.count).to eq(6)
+      expect(ContactResponseKey.where(key: 'disposition').count).to eq(3)
+      expect(ContactResponseKey.where(key: 'rsvp').count).to eq(3)
     end
   end
 end
