@@ -5,6 +5,8 @@ gem 'rails', '~> 6.1.0'
 gem 'pg'
 gem 'active_model_serializers'
 
+gem 'net-smtp', require: false
+
 group :development, :test do
   gem 'phony'
   gem 'faker'
